@@ -18,13 +18,12 @@ on:
         default: qa
 
 jobs:
-  # 1) Export siempre desde DEV
   export_dev:
     name: Export from Dev
     runs-on: ubuntu-latest
     environment: dev
     steps:
-      - name: Call core/export
+      - name: Core/export
         uses: mtombolini-vrgroup/appian-cicd-core/.github/workflows/export.yml@v1
         with:
           manifest_path: config/appian.json
@@ -34,7 +33,6 @@ jobs:
           app_props_public_json: ${{ vars.APP_PROPS_PUBLIC_JSON }}
         secrets: inherit
 
-  # 2) Promote to QA (si targets == qa o qa+prod)
   promote_qa:
     if: ${{ inputs.targets == 'qa' || inputs.targets == 'qa+prod' }}
     name: Promote to QA
@@ -42,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: qa
     steps:
-      - name: Call core/promote (QA)
+      - name: Core/promote (QA)
         uses: mtombolini-vrgroup/appian-cicd-core/.github/workflows/promote.yml@v1
         with:
           target_env: qa
@@ -53,16 +51,32 @@ jobs:
           app_props_public_json: ${{ vars.APP_PROPS_PUBLIC_JSON }}
         secrets: inherit
 
-  # 3) Promote to PROD (si targets == prod o qa+prod)
-  #    Si elegiste qa+prod, espera a que QA termine OK (y respeta los reviewers de cada environment).
-  promote_prod:
-    if: ${{ inputs.targets == 'prod' || inputs.targets == 'qa+prod' }}
-    name: Promote to Prod
-    needs: ${{ inputs.targets == 'qa+prod' && 'promote_qa' || 'export_dev' }}
+  promote_prod_after_qa:
+    if: ${{ inputs.targets == 'qa+prod' }}
+    name: Promote to Prod (after QA)
+    needs: promote_qa
     runs-on: ubuntu-latest
     environment: prod
     steps:
-      - name: Call core/promote (Prod)
+      - name: Core/promote (Prod)
+        uses: mtombolini-vrgroup/appian-cicd-core/.github/workflows/promote.yml@v1
+        with:
+          target_env: prod
+          manifest_path: config/appian.json
+          export_scope: ${{ inputs.export_scope }}
+          package_name: ${{ inputs.package_name }}
+          appian_url: ${{ vars.APPIAN_URL }}
+          app_props_public_json: ${{ vars.APP_PROPS_PUBLIC_JSON }}
+        secrets: inherit
+
+  promote_prod_direct:
+    if: ${{ inputs.targets == 'prod' }}
+    name: Promote to Prod (direct)
+    needs: export_dev
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - name: Core/promote (Prod)
         uses: mtombolini-vrgroup/appian-cicd-core/.github/workflows/promote.yml@v1
         with:
           target_env: prod
