@@ -1,0 +1,17 @@
+name: Rollback
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag/release a reinstalar"
+        required: true
+
+jobs:
+  rollback:
+    uses: mtombolini-vrgroup/appian-cicd-core/.github/workflows/rollback.yml@v1
+    with:
+      tag: ${{ inputs.tag }}
+      manifest_path: config/appian.json
+      appian_url: ${{ vars.APPIAN_URL }}
+      app_props_public_json: ${{ vars.APP_PROPS_PUBLIC_JSON }}
+    secrets: inherit

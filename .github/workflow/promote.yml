@@ -1,0 +1,29 @@
+name: Promote
+on:
+  workflow_dispatch:
+    inputs:
+      target_env:
+        description: "Ambiente destino"
+        type: choice
+        options: [qa, prod]
+        required: true
+      export_scope:
+        description: "¿Qué promocionar?"
+        type: choice
+        options: [app, package]
+        default: app
+      package_name:
+        description: "Nombre del package (si export_scope=package)"
+        required: false
+
+jobs:
+  promote:
+    uses: mtombolini-vrgroup/appian-cicd-core/.github/workflows/promote.yml@v1
+    with:
+      target_env: ${{ inputs.target_env }}
+      manifest_path: config/appian.json
+      export_scope: ${{ inputs.export_scope }}
+      package_name: ${{ inputs.package_name }}
+      appian_url: ${{ vars.APPIAN_URL }}
+      app_props_public_json: ${{ vars.APP_PROPS_PUBLIC_JSON }}
+    secrets: inherit
