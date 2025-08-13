@@ -1,4 +1,4 @@
-name: Deploy via core (sandbox caller)
+name: Export App via core (sandbox)
 
 on:
   workflow_dispatch:
@@ -14,7 +14,30 @@ permissions:
   contents: read
 
 jobs:
-  call-core-demo:
-    uses: mtombolini-vrgroup/appian-cicd-core/.github/workflows/export-demo.yml@main
+  validate-vars:
+    runs-on: ubuntu-latest
+    outputs:
+      uuid: ${{ steps.pick.outputs.uuid }}
+    steps:
+      - name: Validate APP_UUID
+        id: pick
+        shell: bash
+        run: |
+          UUID="${{ vars.APP_UUID }}"
+          if [ -z "$UUID" ]; then
+            echo "❌ Falta definir vars.APP_UUID en Settings → Secrets and variables → Actions → Variables"
+            exit 1
+          fi
+          echo "uuid=$UUID" >> "$GITHUB_OUTPUT"
+          echo "✅ Usando APP_UUID=$UUID"
+
+  call-core-export:
+    needs: validate-vars
+    uses: mtombolini-vrgroup/appian-cicd-core/.github/workflows/export-demo.yml@dev
     with:
-      env: ${{ github.event.inputs.env }}
+      env:          ${{ github.event.inputs.env }}
+      export_type:  application
+      uuid:         ${{ needs.validate-vars.outputs.uuid }}
+      name:         "CI Export application"
+      description:  "Triggered by sandbox"
+      download_artifacts: false
