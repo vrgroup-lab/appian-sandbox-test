@@ -1,4 +1,5 @@
 name: Deploy via core (sandbox caller)
+
 on:
   workflow_dispatch:
     inputs:
@@ -7,9 +8,11 @@ on:
         options: [dev, qa, prod]
         required: true
         description: "Target env"
+
 permissions:
   id-token: write
   contents: read
+
 jobs:
   call-core-demo:
     uses: mtombolini-vrgroup/appian-cicd-core/.github/workflows/export-demo.yml@main
