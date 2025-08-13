@@ -12,6 +12,6 @@ permissions:
   contents: read
 jobs:
   call-core-demo:
-    uses: mtombolini-vrgroup/core/.github/workflows/appian-export-demo.yml@main
+    uses: mtombolini-vrgroup/core/.github/workflows/export-demo.yml@main
     with:
       env: ${{ github.event.inputs.env }}
