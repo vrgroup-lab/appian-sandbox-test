@@ -1,0 +1,17 @@
+name: Deploy via core (sandbox caller)
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        type: choice
+        options: [dev, qa, prod]
+        required: true
+        description: "Target env"
+permissions:
+  id-token: write
+  contents: read
+jobs:
+  call-core-demo:
+    uses: mtombolini-vrgroup/core/.github/workflows/appian-export-demo.yml@main
+    with:
+      env: ${{ github.event.inputs.env }}
