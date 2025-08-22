@@ -1,0 +1,11 @@
+name: Smoke Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  hello:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Echo branch and commit
+        run: echo "Running on $GITHUB_REF with commit $GITHUB_SHA"
