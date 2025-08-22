@@ -1,81 +1,59 @@
-name: Deploy (Export + Promote)
+name: Deploy
 
 on:
   workflow_dispatch:
     inputs:
-      export_scope:
-        description: "Qué desplegar"
+      artifact_type:
+        description: "Qué tipo de artefacto exportar"
         type: choice
-        options: [app, package]
-        default: app
-      package_name:
-        description: "Nombre del package (si export_scope=package)"
+        options:
+          - application
+          - package
+        default: application
+      artifact_id:
+        description: "UUID del artefacto (opcional; si se omite se usará APP_UUID)"
         type: string
         required: false
-      targets:
-        description: "Ambientes destino"
+      artifact_name:
+        description: "Nombre del artefacto"
+        type: string
+        required: true
+      source_env:
+        description: "Ambiente origen"
         type: choice
-        options: ["qa", "prod", "qa+prod"]
-        default: "qa"
+        options:
+          - DEV
+          - QA
+          - PROD
+        default: DEV
+      target_env:
+        description: "Ambiente destino"
+        type: choice
+        options:
+          - QA
+          - PROD
+        default: QA
 
 jobs:
-  export_dev:
-    name: Export from Dev
+  export:
+    name: Export from ${{ inputs.source_env }}
     uses: mtombolini-vrgroup/appian-cicd-core/.github/workflows/export.yml@v1.0.3
     with:
-      manifest_path: config/appian.json
-      export_scope: ${{ inputs.export_scope }}
-      package_name: ${{ inputs.package_name }}
-      appian_url: ${{ vars.APPIAN_URL }}
-      app_props_public_json: ${{ vars.APP_PROPS_PUBLIC_JSON }}
+      base-url: ${{ vars[format('APPIAN_URL_{0}', inputs.source_env)] }}
+      export-type: ${{ inputs.artifact_type }}
+      uuid: ${{ inputs.artifact_id || vars.APP_UUID }}
+      name: ${{ inputs.artifact_name }}
+      download-out: export.zip
     secrets:
       APPIAN_API_KEY: ${{ secrets.APPIAN_API_KEY }}
-      APP_PROPS_SENSITIVE_JSON: ${{ secrets.APP_PROPS_SENSITIVE_JSON }}
 
-  promote_qa:
-    if: ${{ inputs.targets == 'qa' || inputs.targets == 'qa+prod' }}
-    name: Promote to QA
-    needs: export_dev
+  promote:
+    name: Promote to ${{ inputs.target_env }}
+    needs: export
     uses: mtombolini-vrgroup/appian-cicd-core/.github/workflows/promote.yml@v1.0.3
     with:
-      target_env: qa
-      manifest_path: config/appian.json
-      export_scope: ${{ inputs.export_scope }}
-      package_name: ${{ inputs.package_name }}
-      appian_url: ${{ vars.APPIAN_URL }}
-      app_props_public_json: ${{ vars.APP_PROPS_PUBLIC_JSON }}
+      base-url: ${{ vars[format('APPIAN_URL_{0}', inputs.target_env)] }}
+      package-path: export.zip
     secrets:
       APPIAN_API_KEY: ${{ secrets.APPIAN_API_KEY }}
-      APP_PROPS_SENSITIVE_JSON: ${{ secrets.APP_PROPS_SENSITIVE_JSON }}
 
-  promote_prod_after_qa:
-    if: ${{ inputs.targets == 'qa+prod' }}
-    name: Promote to Prod (after QA)
-    needs: promote_qa
-    uses: mtombolini-vrgroup/appian-cicd-core/.github/workflows/promote.yml@v1.0.3
-    with:
-      target_env: prod
-      manifest_path: config/appian.json
-      export_scope: ${{ inputs.export_scope }}
-      package_name: ${{ inputs.package_name }}
-      appian_url: ${{ vars.APPIAN_URL }}
-      app_props_public_json: ${{ vars.APP_PROPS_PUBLIC_JSON }}
-    secrets:
-      APPIAN_API_KEY: ${{ secrets.APPIAN_API_KEY }}
-      APP_PROPS_SENSITIVE_JSON: ${{ secrets.APP_PROPS_SENSITIVE_JSON }}
-
-  promote_prod_direct:
-    if: ${{ inputs.targets == 'prod' }}
-    name: Promote to Prod (direct)
-    needs: export_dev
-    uses: mtombolini-vrgroup/appian-cicd-core/.github/workflows/promote.yml@v1.0.3
-    with:
-      target_env: prod
-      manifest_path: config/appian.json
-      export_scope: ${{ inputs.export_scope }}
-      package_name: ${{ inputs.package_name }}
-      appian_url: ${{ vars.APPIAN_URL }}
-      app_props_public_json: ${{ vars.APP_PROPS_PUBLIC_JSON }}
-    secrets:
-      APPIAN_API_KEY: ${{ secrets.APPIAN_API_KEY }}
-      APP_PROPS_SENSITIVE_JSON: ${{ secrets.APP_PROPS_SENSITIVE_JSON }}
