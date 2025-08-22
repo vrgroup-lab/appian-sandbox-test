@@ -37,7 +37,7 @@ on:
 jobs:
   export:
     name: Export from ${{ inputs.source_env }}
-    uses: mtombolini-vrgroup/appian-cicd-core/.github/workflows/export.yml@develop
+    uses: vrgroup-lab/appian-cicd-core/.github/workflows/export.yml@develop
     with:
       base-url: ${{ vars[format('APPIAN_URL_{0}', inputs.source_env)] }}
       export-type: ${{ inputs.artifact_type }}
@@ -50,7 +50,7 @@ jobs:
   promote:
     name: Promote to ${{ inputs.target_env }}
     needs: export
-    uses: mtombolini-vrgroup/appian-cicd-core/.github/workflows/promote.yml@develop
+    uses: vrgroup-lab/appian-cicd-core/.github/workflows/promote.yml@develop
     with:
       base-url: ${{ vars[format('APPIAN_URL_{0}', inputs.target_env)] }}
       package-path: export.zip
