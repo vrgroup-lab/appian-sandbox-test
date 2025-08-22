@@ -18,7 +18,7 @@ on:
 
 jobs:
   promote:
-    uses: mtombolini-vrgroup/appian-cicd-core/.github/workflows/promote.yml@v1
+    uses: mtombolini-vrgroup/appian-cicd-core/.github/workflows/promote.yml@develop
     with:
       target_env: ${{ inputs.target_env }}
       manifest_path: config/appian.json
