@@ -33,7 +33,7 @@ jobs:
 
   call-core-export:
     needs: validate-vars
-    uses: mtombolini-vrgroup/appian-cicd-core/.github/workflows/export-demo.yml@dev
+    uses: vrgroup-lab/appian-cicd-core/.github/workflows/export-demo.yml@dev
     with:
       env:          ${{ github.event.inputs.env }}
       export_type:  application

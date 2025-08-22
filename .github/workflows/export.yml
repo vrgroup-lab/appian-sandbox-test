@@ -13,7 +13,7 @@ on:
 
 jobs:
   export:
-    uses: mtombolini-vrgroup/appian-cicd-core/.github/workflows/export.yml@develop
+    uses: vrgroup-lab/appian-cicd-core/.github/workflows/export.yml@develop
     with:
       manifest_path: config/appian.json
       export_scope: ${{ inputs.export_scope }}
