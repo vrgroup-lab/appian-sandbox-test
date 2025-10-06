@@ -149,66 +149,66 @@ jobs:
           dest.write_text(json.dumps(data, indent=2), encoding="utf-8")
           PY
 
-                - name: Publicar rutas generadas
-                  id: publish
-                  env:
-                    DEST: ${{ steps.prep.outputs.dest }}
-                  run: |
-                    set -euo pipefail
-                    echo "artifact_dir=${DEST}" >> "$GITHUB_OUTPUT"
-                    echo "metadata_path=${DEST}/export-metadata.json" >> "$GITHUB_OUTPUT"
+      - name: Publicar rutas generadas
+        id: publish
+        env:
+          DEST: ${{ steps.prep.outputs.dest }}
+        run: |
+          set -euo pipefail
+          echo "artifact_dir=${DEST}" >> "$GITHUB_OUTPUT"
+          echo "metadata_path=${DEST}/export-metadata.json" >> "$GITHUB_OUTPUT"
 
-                - name: Commit artefactos
-                  env:
-                    DEST: ${{ steps.prep.outputs.dest }}
-                    ARTIFACT_NAME: ${{ needs.export.outputs.artifact_name }}
-                  run: |
-                    set -euo pipefail
-                    git status --short
-                    git add "$DEST"
-                    if git diff --cached --quiet; then
-                      echo "Sin cambios que versionar"
-                      exit 0
-                    fi
-                    git config user.name "github-actions"
-                    git config user.email "github-actions@github.com"
-                    git commit -m "chore: almacenar artefacto $ARTIFACT_NAME"
-                    git push
+      - name: Commit artefactos
+        env:
+          DEST: ${{ steps.prep.outputs.dest }}
+          ARTIFACT_NAME: ${{ needs.export.outputs.artifact_name }}
+        run: |
+          set -euo pipefail
+          git status --short
+          git add "$DEST"
+          if git diff --cached --quiet; then
+            echo "Sin cambios que versionar"
+            exit 0
+          fi
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git commit -m "chore: almacenar artefacto $ARTIFACT_NAME"
+          git push
 
-                - name: Mostrar detalles del deployment
-                  run: |
-                    echo "deployment_uuid=${{ needs.export.outputs.deployment_uuid }}"
-                    echo "deployment_status=${{ needs.export.outputs.deployment_status }}"
+      - name: Mostrar detalles del deployment
+        run: |
+          echo "deployment_uuid=${{ needs.export.outputs.deployment_uuid }}"
+          echo "deployment_status=${{ needs.export.outputs.deployment_status }}"
 
-            promote_qa:
-              if: ${{ inputs.plan == 'dev-to-qa' || inputs.plan == 'dev-qa-prod' }}
-              needs: [export, archive_export]
-              uses: vrgroup-lab/appian-cicd-core/.github/workflows/promote.yml@develop
-              secrets: inherit
-              with:
-                source_env: dev
-                target_env: qa
-                artifact_name: ${{ needs.export.outputs.artifact_name }}
-                dry_run: false
+  promote_qa:
+    if: ${{ inputs.plan == 'dev-to-qa' || inputs.plan == 'dev-qa-prod' }}
+    needs: [export, archive_export]
+    uses: vrgroup-lab/appian-cicd-core/.github/workflows/promote.yml@develop
+    secrets: inherit
+    with:
+      source_env: dev
+      target_env: qa
+      artifact_name: ${{ needs.export.outputs.artifact_name }}
+      dry_run: false
 
-            promote_prod_after_qa:
-              if: ${{ inputs.plan == 'dev-qa-prod' }}
-              needs: promote_qa
-              uses: vrgroup-lab/appian-cicd-core/.github/workflows/promote.yml@develop
-              secrets: inherit
-              with:
-                source_env: dev
-                target_env: prod
-                artifact_name: ${{ needs.export.outputs.artifact_name }}
-                dry_run: false
+  promote_prod_after_qa:
+    if: ${{ inputs.plan == 'dev-qa-prod' }}
+    needs: promote_qa
+    uses: vrgroup-lab/appian-cicd-core/.github/workflows/promote.yml@develop
+    secrets: inherit
+    with:
+      source_env: dev
+      target_env: prod
+      artifact_name: ${{ needs.export.outputs.artifact_name }}
+      dry_run: false
 
-            promote_prod_from_qa:
-              if: ${{ inputs.plan == 'qa-to-prod' }}
-              needs: [export, archive_export]
-              uses: vrgroup-lab/appian-cicd-core/.github/workflows/promote.yml@develop
-              secrets: inherit
-              with:
-                source_env: qa
-                target_env: prod
-                artifact_name: ${{ needs.export.outputs.artifact_name }}
-                dry_run: false
+  promote_prod_from_qa:
+    if: ${{ inputs.plan == 'qa-to-prod' }}
+    needs: [export, archive_export]
+    uses: vrgroup-lab/appian-cicd-core/.github/workflows/promote.yml@develop
+    secrets: inherit
+    with:
+      source_env: qa
+      target_env: prod
+      artifact_name: ${{ needs.export.outputs.artifact_name }}
+      dry_run: false
