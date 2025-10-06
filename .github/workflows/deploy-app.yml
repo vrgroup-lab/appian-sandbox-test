@@ -26,7 +26,7 @@ jobs:
 
   export:
     needs: validate
-    uses: bice-vida/appian-cicd-core/.github/workflows/export.yml@develop
+    uses: vrgroup-lab/appian-cicd-core/.github/workflows/export.yml@develop
     secrets: inherit
     with:
       # Si el plan es qa-to-prod, exportamos desde QA; si no, desde Dev
@@ -180,7 +180,7 @@ jobs:
             promote_qa:
               if: ${{ inputs.plan == 'dev-to-qa' || inputs.plan == 'dev-qa-prod' }}
               needs: [export, archive_export]
-              uses: bice-vida/appian-cicd-core/.github/workflows/promote.yml@develop
+              uses: vrgroup-lab/appian-cicd-core/.github/workflows/promote.yml@develop
               secrets: inherit
               with:
                 source_env: dev
@@ -191,7 +191,7 @@ jobs:
             promote_prod_after_qa:
               if: ${{ inputs.plan == 'dev-qa-prod' }}
               needs: promote_qa
-              uses: bice-vida/appian-cicd-core/.github/workflows/promote.yml@develop
+              uses: vrgroup-lab/appian-cicd-core/.github/workflows/promote.yml@develop
               secrets: inherit
               with:
                 source_env: dev
@@ -202,7 +202,7 @@ jobs:
             promote_prod_from_qa:
               if: ${{ inputs.plan == 'qa-to-prod' }}
               needs: [export, archive_export]
-              uses: bice-vida/appian-cicd-core/.github/workflows/promote.yml@develop
+              uses: vrgroup-lab/appian-cicd-core/.github/workflows/promote.yml@develop
               secrets: inherit
               with:
                 source_env: qa
