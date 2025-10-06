@@ -1,0 +1,45 @@
+# Guía de Template y Replicación de Sandbox
+
+## ¿Qué se copia al usar un Template?
+- Se copia el contenido del repositorio: código, directorios, workflows (`.github/workflows`), issues, labels, etc.
+- No se copian configuraciones sensibles ni de protección:
+  - Secrets, variables del repo, environments (QA/PROD) y sus reviewers, branch protections, Actions permissions.
+
+Conclusión: al crear un sandbox desde este Template, hay que configurar variables/environments de nuevo.
+
+## Convertir este repo en Template
+1. Ve a `Settings` → `General` → sección “Template repository”.
+2. Activa “Template repository” y guarda.
+
+## Crear un Sandbox nuevo desde el Template
+1. En GitHub, pulsa “Use this template” → “Create a new repository”.
+2. Elige owner/organización, nombre del repo y visibilidad.
+3. Crea el repositorio.
+
+## Configuración posterior en el nuevo Sandbox
+1. Variables del repositorio:
+   - `APP_UUID`: UUID de la aplicación Appian que representa este Sandbox.
+2. Environments:
+   - Crea `qa` y `prod` en `Settings` → `Environments`.
+   - Define reviewers/aprobaciones si quieres gating manual.
+3. Actions permissions (repo Sandbox):
+   - Permite usar reusable workflows. Si usas allowlist, agrega:
+     - `bice-vida/appian-cicd-core/.github/workflows/export.yml@*`
+     - `bice-vida/appian-cicd-core/.github/workflows/promote.yml@*`
+4. Reusable workflows (repo Core):
+   - En el repo Core, `Settings` → `Actions` → `General` → “Access for reusable workflows”.
+   - Debe permitir acceso desde repos de la organización (o agregar el nuevo Sandbox si es lista seleccionada).
+5. Opcional: Protecciones de rama y políticas de aprobación según tus estándares.
+
+## Probar el flujo
+1. Ve a `Actions` → ejecuta “Deploy (wrapper)”.
+2. Inputs sugeridos:
+   - `deploy_kind=package`, `package_name=nightly`, `plan=dev-to-qa`, `dry_run=true`.
+3. Observa:
+   - Export: publica `artifact_name` (simulado en MVP) y sube el artifact.
+   - Promote QA/PROD: consume `artifact_name` y, si corresponde, pide approval por environment.
+
+## Notas de versión del Core
+- Este Sandbox referencia el Core en `@develop` por defecto. Para estabilidad en producción:
+  - Pinea a un tag (ej. `@v0.1.0`) o a un SHA específico en `/.github/workflows/deploy.yml`.
+

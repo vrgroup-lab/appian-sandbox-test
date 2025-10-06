@@ -1,0 +1,207 @@
+name: Deploy Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      package_name:
+        description: Nombre del package a promover
+        required: true
+      plan:
+        description: Plan de promoción (desde dev)
+        type: choice
+        options: [dev-to-qa, dev-qa-prod]
+        default: dev-to-qa
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validar inputs y variables
+        run: |
+          echo "package_name=${{ inputs.package_name }}"
+          echo "plan=${{ inputs.plan }}"
+          if [ -z "${{ vars.APP_UUID }}" ]; then
+            echo "❌ Falta la variable de repositorio APP_UUID. Defínela en Settings > Secrets and variables > Variables." >&2
+            exit 1
+          fi
+
+  export:
+    needs: validate
+    uses: bice-vida/appian-cicd-core/.github/workflows/export.yml@develop
+    secrets: inherit
+    with:
+      env: dev
+      deploy_kind: package
+      app_uuid: ${{ vars.APP_UUID }}
+      package_name: ${{ inputs.package_name }}
+      dry_run: false
+
+  archive_export:
+    name: Guardar artefactos de export
+    needs: export
+    runs-on: ubuntu-latest
+    outputs:
+      artifact_dir: ${{ steps.publish.outputs.artifact_dir }}
+      metadata_path: ${{ steps.publish.outputs.metadata_path }}
+    steps:
+      - name: Checkout sandbox
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Preparar carpeta destino
+        id: prep
+        env:
+          EXPORT_ARTIFACT_NAME: ${{ needs.export.outputs.artifact_name }}
+        run: |
+          set -euo pipefail
+          name="${EXPORT_ARTIFACT_NAME}"
+          if [ -z "$name" ]; then
+            name="export-${GITHUB_RUN_ID}"
+          fi
+          dest="appian-artifacts/$name"
+          mkdir -p "$dest"
+          echo "dest=$dest" >> "$GITHUB_OUTPUT"
+
+      - name: Descargar paquete principal
+        if: ${{ needs.export.outputs.artifact_name != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.export.outputs.artifact_name }}
+          path: ${{ steps.prep.outputs.dest }}
+
+      - name: Descargar scripts de base de datos
+        if: ${{ needs.export.outputs.database_scripts != '' && needs.export.outputs.database_scripts != '[]' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ format('{0}-db-scripts', needs.export.outputs.artifact_name) }}
+          path: ${{ steps.prep.outputs.dest }}/database-scripts
+
+      - name: Descargar archivo de customización
+        if: ${{ needs.export.outputs.customization_file != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ format('{0}-customization', needs.export.outputs.artifact_name) }}
+          path: ${{ steps.prep.outputs.dest }}/customization
+
+      - name: Descargar template de customización
+        if: ${{ needs.export.outputs.customization_template != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ format('{0}-customization-template', needs.export.outputs.artifact_name) }}
+          path: ${{ steps.prep.outputs.dest }}/customization-template
+
+      - name: Descargar plugins
+        if: ${{ needs.export.outputs.plugins_zip != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ format('{0}-plugins', needs.export.outputs.artifact_name) }}
+          path: ${{ steps.prep.outputs.dest }}/plugins
+
+      - name: Registrar metadata de export
+        env:
+          DEST: ${{ steps.prep.outputs.dest }}
+          ARTIFACT_NAME: ${{ needs.export.outputs.artifact_name }}
+          ARTIFACT_PATH: ${{ needs.export.outputs.artifact_path }}
+          ARTIFACT_DIR: ${{ needs.export.outputs.artifact_dir }}
+          DATABASE_SCRIPTS: ${{ needs.export.outputs.database_scripts }}
+          PLUGINS_ZIP: ${{ needs.export.outputs.plugins_zip }}
+          CUSTOMIZATION_FILE: ${{ needs.export.outputs.customization_file }}
+          CUSTOMIZATION_TEMPLATE: ${{ needs.export.outputs.customization_template }}
+          DOWNLOADED_FILES: ${{ needs.export.outputs.downloaded_files }}
+          DEPLOYMENT_UUID: ${{ needs.export.outputs.deployment_uuid }}
+          DEPLOYMENT_STATUS: ${{ needs.export.outputs.deployment_status }}
+        run: |
+          set -euo pipefail
+          dest="${DEST}/export-metadata.json"
+          db_json="${DATABASE_SCRIPTS}"
+          if [[ -z "$db_json" ]]; then
+            db_json='[]'
+          elif ! echo "$db_json" | jq empty >/dev/null 2>&1; then
+            db_json='[]'
+          fi
+          files_json="${DOWNLOADED_FILES}"
+          if [[ -z "$files_json" ]]; then
+            files_json='[]'
+          elif ! echo "$files_json" | jq empty >/dev/null 2>&1; then
+            files_json='[]'
+          fi
+          mkdir -p "${DEST}"
+          jq -n \
+            --arg artifact_name "$ARTIFACT_NAME" \
+            --arg artifact_path "$ARTIFACT_PATH" \
+            --arg artifact_dir "$ARTIFACT_DIR" \
+            --arg plugins_zip "$PLUGINS_ZIP" \
+            --arg customization_file "$CUSTOMIZATION_FILE" \
+            --arg customization_template "$CUSTOMIZATION_TEMPLATE" \
+            --arg deployment_uuid "$DEPLOYMENT_UUID" \
+            --arg deployment_status "$DEPLOYMENT_STATUS" \
+            --argjson database_scripts "$db_json" \
+            --argjson downloaded_files "$files_json" \
+            '{
+              artifact_name: $artifact_name,
+              artifact_path: $artifact_path,
+              artifact_dir: $artifact_dir,
+              database_scripts: $database_scripts,
+              plugins_zip: $plugins_zip,
+              customization_file: $customization_file,
+              customization_template: $customization_template,
+              downloaded_files: $downloaded_files,
+              deployment_uuid: $deployment_uuid,
+              deployment_status: $deployment_status
+            }' > "$dest"
+
+      - name: Publicar rutas generadas
+        id: publish
+        env:
+          DEST: ${{ steps.prep.outputs.dest }}
+        run: |
+          set -euo pipefail
+          echo "artifact_dir=${DEST}" >> "$GITHUB_OUTPUT"
+          echo "metadata_path=${DEST}/export-metadata.json" >> "$GITHUB_OUTPUT"
+
+      - name: Commit artefactos
+        env:
+          DEST: ${{ steps.prep.outputs.dest }}
+          ARTIFACT_NAME: ${{ needs.export.outputs.artifact_name }}
+        run: |
+          set -euo pipefail
+          git status --short
+          git add "$DEST"
+          if git diff --cached --quiet; then
+            echo "Sin cambios que versionar"
+            exit 0
+          fi
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git commit -m "chore: almacenar artefacto $ARTIFACT_NAME"
+          git push
+
+      - name: Mostrar detalles del deployment
+        run: |
+          echo "deployment_uuid=${{ needs.export.outputs.deployment_uuid }}"
+          echo "deployment_status=${{ needs.export.outputs.deployment_status }}"
+
+  promote_qa:
+    needs: [export, archive_export]
+    uses: bice-vida/appian-cicd-core/.github/workflows/promote.yml@develop
+    secrets: inherit
+    with:
+      source_env: dev
+      target_env: qa
+      artifact_name: ${{ needs.export.outputs.artifact_name }}
+      dry_run: false
+
+  promote_prod_after_qa:
+    if: ${{ inputs.plan == 'dev-qa-prod' }}
+    needs: promote_qa
+    uses: bice-vida/appian-cicd-core/.github/workflows/promote.yml@develop
+    secrets: inherit
+    with:
+      source_env: dev
+      target_env: prod
+      artifact_name: ${{ needs.export.outputs.artifact_name }}
+      dry_run: false
