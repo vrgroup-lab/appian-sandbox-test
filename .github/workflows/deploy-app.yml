@@ -11,7 +11,7 @@ on:
 
 permissions:
   actions: write
-  contents: read      # o write si lo necesitas
+  contents: write      # o write si lo necesitas
   pull-requests: write  # solo si el flujo crea PRs
   id-token: write 
 
