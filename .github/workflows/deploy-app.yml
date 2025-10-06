@@ -10,7 +10,10 @@ on:
         default: dev-to-qa
 
 permissions:
-  contents: write
+  actions: write
+  contents: read      # o write si lo necesitas
+  pull-requests: write  # solo si el flujo crea PRs
+  id-token: write 
 
 jobs:
   validate:
