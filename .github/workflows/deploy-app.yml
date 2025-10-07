@@ -25,9 +25,12 @@ jobs:
           if [ -z "${{ vars.APP_UUID }}" ]; then
             echo "❌ Falta la variable de repositorio APP_UUID. Defínela en Settings > Secrets and variables > Variables." >&2
             exit 1
+          if [ -z "${{ vars.APP_NAME }}" ]; then
+            echo "❌ Falta la variable de repositorio APP_NAME. Defínela en Settings > Secrets and variables > Variables." >&2
+            exit 1
           fi
 
-          
+
   export:
     needs: validate
     uses: vrgroup-lab/appian-cicd-core/.github/workflows/export.yml@develop
@@ -37,6 +40,7 @@ jobs:
       env: ${{ inputs.plan == 'qa-to-prod' && 'qa' || 'dev' }}
       deploy_kind: app
       app_uuid: ${{ vars.APP_UUID }}
+      app_name: ${{ vars.APP_NAME || '' }}
       dry_run: false
 
   archive_export:
