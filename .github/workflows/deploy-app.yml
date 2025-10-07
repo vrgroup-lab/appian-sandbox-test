@@ -25,6 +25,7 @@ jobs:
           if [ -z "${{ vars.APP_UUID }}" ]; then
             echo "❌ Falta la variable de repositorio APP_UUID. Defínela en Settings > Secrets and variables > Variables." >&2
             exit 1
+          fi
           if [ -z "${{ vars.APP_NAME }}" ]; then
             echo "❌ Falta la variable de repositorio APP_NAME. Defínela en Settings > Secrets and variables > Variables." >&2
             exit 1
