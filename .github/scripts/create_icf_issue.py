@@ -1,0 +1,191 @@
+#!/usr/bin/env python3
+import json
+import os
+import sys
+from pathlib import Path
+from urllib import request, error
+
+
+def log(msg: str) -> None:
+  print(msg, flush=True)
+
+
+def read_issue_template(workspace: Path, template_path: str) -> str:
+  try:
+    resolved = workspace / template_path
+    return resolved.read_text(encoding="utf-8")
+  except FileNotFoundError:
+    log(f"::warning::No se encontró el template de issue en {template_path}")
+  except OSError as exc:
+    log(f"::warning::Error al leer {template_path}: {exc}")
+  return ""
+
+
+def extract_template_section(workspace: Path, provisioning_path: str) -> str:
+  try:
+    content = (workspace / provisioning_path).read_text(encoding="utf-8")
+  except FileNotFoundError:
+    log(f"::warning::No se encontró la plantilla de provisioning en {provisioning_path}")
+    return f"> **Nota:** No se encontró `{provisioning_path}`. Carga la plantilla antes de continuar."
+  except OSError as exc:
+    log(f"::warning::Error al leer {provisioning_path}: {exc}")
+    return f"> **Nota:** No se pudo leer `{provisioning_path}` ({exc})."
+
+  lines = [line.strip() for line in content.splitlines()]
+  important = [
+      line.lstrip("#").strip()
+      for line in lines
+      if line.startswith("#") and not line.startswith("##")
+  ]
+  important = [line for line in important if line]
+
+  if not important:
+    return f"> **Nota:** No se detectó contenido utilizable en `{provisioning_path}`. Verifica la plantilla."
+
+  joined = "\n".join(important)
+  return f"### Extracto de claves de la plantilla\n```properties\n{joined}\n```"
+
+
+def render_body(template: str, replacements: dict[str, str]) -> str:
+  result = template
+  for token, value in replacements.items():
+    result = result.replace(token, value)
+  return result
+
+
+def github_request(method: str, endpoint: str, token: str, payload: dict | None = None) -> dict:
+  api_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
+  url = f"{api_url}{endpoint}"
+  headers = {
+      "Authorization": f"Bearer {token}",
+      "Accept": "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+  }
+
+  data = None
+  if payload is not None:
+    data = json.dumps(payload).encode("utf-8")
+    headers["Content-Type"] = "application/json"
+
+  req = request.Request(url, data=data, headers=headers, method=method)
+  try:
+    with request.urlopen(req) as resp:
+      body = resp.read()
+      if not body:
+        return {}
+      return json.loads(body.decode("utf-8"))
+  except error.HTTPError as http_err:
+    detail = http_err.read().decode("utf-8", errors="replace")
+    raise RuntimeError(f"GitHub API {method} {endpoint} failed: {http_err.status} {http_err.reason} – {detail}") from http_err
+
+
+def set_output(name: str, value: str) -> None:
+  output_path = os.environ.get("GITHUB_OUTPUT")
+  if not output_path:
+    return
+  with open(output_path, "a", encoding="utf-8") as fh:
+    fh.write(f"{name}={value}\n")
+
+
+def main() -> int:
+  token = os.environ.get("GITHUB_TOKEN")
+  if not token:
+    log("::error::Falta GITHUB_TOKEN en el entorno.")
+    return 1
+
+  repository = os.environ.get("GITHUB_REPOSITORY")
+  if not repository or "/" not in repository:
+    log("::error::Variable GITHUB_REPOSITORY inválida o ausente.")
+    return 1
+  owner, repo = repository.split("/", 1)
+
+  run_number = os.environ.get("GITHUB_RUN_NUMBER", "unknown")
+  title = f"[CI] Completar ICF_JSON_OVERRIDES – Run #{run_number}"
+
+  target_map_raw = os.environ.get("TARGET_MAP", "{}")
+  try:
+    target_map = json.loads(target_map_raw)
+  except json.JSONDecodeError as exc:
+    log(f"::warning::TARGET_MAP inválido ({target_map_raw}): {exc}")
+    target_map = {}
+
+  plan = os.environ.get("PLAN", "desconocido")
+  targets = target_map.get(plan, [])
+  targets_list = "- _(no se identificó entorno de destino)_"
+  if targets:
+    targets_list = "\n".join(f"- `{env}`" for env in targets)
+
+  workspace = Path(os.environ.get("GITHUB_WORKSPACE", Path.cwd()))
+  template_path = os.environ.get("TEMPLATE_PATH", ".github/templates/icf-issue.md")
+  provisioning_path = os.environ.get("PROVISIONING_TEMPLATE_PATH", "provisioning/icf-template.properties")
+
+  template_body = read_issue_template(workspace, template_path)
+  template_section = extract_template_section(workspace, provisioning_path)
+
+  replacements = {
+      "{{PLAN}}": plan,
+      "{{DRY_RUN}}": os.environ.get("DRY_RUN", "false"),
+      "{{ARTIFACT_DIR}}": os.environ.get("ARTIFACT_DIR", "(sin directorio publicado)"),
+      "{{METADATA_PATH}}": os.environ.get("METADATA_PATH", "(sin metadata)"),
+      "{{RUN_URL}}": os.environ.get("RUN_URL", ""),
+      "{{TARGETS_LIST}}": targets_list,
+      "{{TEMPLATE_SECTION}}": template_section,
+  }
+
+  if template_body:
+    body = render_body(template_body, replacements)
+  else:
+    body = render_body(
+        (
+            "## ✅ Acción requerida\n\n"
+            "1. Ve a **Settings → Secrets and variables → Actions → Repository secrets**.\n"
+            "2. Edita el secreto `ICF_JSON_OVERRIDES` y agrega/actualiza las claves necesarias para esta promoción.\n"
+            "3. Usa la plantilla `provisioning/icf-template.properties` como referencia para los valores obligatorios.\n"
+            "4. Una vez actualizada la configuración, guarda el secreto y continúa con la aprobación en GitHub Actions.\n\n"
+            "### Contexto de la ejecución\n"
+            "- Plan seleccionado: `{{PLAN}}`\n"
+            "- Dry run: `{{DRY_RUN}}`\n"
+            "- Directorio de artefacto: `{{ARTIFACT_DIR}}`\n"
+            "- Metadata export: `{{METADATA_PATH}}`\n"
+            "- Ejecución: {{RUN_URL}}\n\n"
+            "### Entornos objetivo detectados\n"
+            "{{TARGETS_LIST}}\n\n"
+            "> Cierra esta issue cuando los overrides estén listos. Si la promoción se repite, se generará una issue nueva.\n\n"
+            "{{TEMPLATE_SECTION}}\n"
+        ),
+        replacements,
+    )
+
+  log(f"Buscando issue existente con título: {title}")
+  issues = github_request(
+      "GET",
+      f"/repos/{owner}/{repo}/issues?state=open&per_page=100",
+      token,
+  )
+  existing = next((issue for issue in issues if issue.get("title") == title), None)
+
+  if existing:
+    log(f"Issue ya existe: #{existing['number']} – {existing['html_url']}")
+    set_output("issue_number", str(existing["number"]))
+    set_output("issue_url", existing["html_url"])
+    return 0
+
+  log("Creando issue nueva...")
+  created = github_request(
+      "POST",
+      f"/repos/{owner}/{repo}/issues",
+      token,
+      {"title": title, "body": body},
+  )
+
+  issue_number = str(created.get("number", ""))
+  issue_url = created.get("html_url", "")
+  log(f"Issue creada: #{issue_number} – {issue_url}")
+
+  set_output("issue_number", issue_number)
+  set_output("issue_url", issue_url)
+  return 0
+
+
+if __name__ == "__main__":
+  sys.exit(main())
