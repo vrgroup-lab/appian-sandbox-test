@@ -95,11 +95,12 @@ jobs:
           path: ${{ steps.prep.outputs.dest }}/customization
 
       - name: Descargar template de customización
-        if: ${{ needs.export.outputs.customization_template != '' }}
         uses: actions/download-artifact@v4
         with:
-          name: ${{ format('{0}-customization-template', needs.export.outputs.artifact_name) }}
+          pattern: '*-customization-template'
           path: ${{ steps.prep.outputs.dest }}/customization-template/raw
+          merge-multiple: true
+        continue-on-error: true
 
       - name: Extraer plantilla de customización
         if: ${{ needs.export.outputs.customization_template != '' }}
