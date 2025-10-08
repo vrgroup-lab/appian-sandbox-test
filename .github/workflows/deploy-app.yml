@@ -60,6 +60,7 @@ jobs:
       icf_issue_url: ${{ steps.raise.outputs.issue_url }}
       package_artifact_name: ${{ steps.locate_package.outputs.package_artifact_name }}
       package_file_name: ${{ steps.locate_package.outputs.package_file_name }}
+      package_status: ${{ steps.locate_package.outputs.package_status }}
     steps:
       - name: Checkout sandbox
         uses: actions/checkout@v4
@@ -152,6 +153,7 @@ jobs:
         id: locate_package
         env:
           DEST: ${{ steps.prep.outputs.dest }}
+          EXPORT_ARTIFACT_NAME: ${{ needs.export.outputs.artifact_name }}
         run: |
           set -euo pipefail
           dir="${DEST}"
@@ -160,12 +162,20 @@ jobs:
             echo "package_path=$pkg" >> "$GITHUB_OUTPUT"
             echo "package_file_name=$(basename "$pkg")" >> "$GITHUB_OUTPUT"
             echo "package_artifact_name=promote-package" >> "$GITHUB_OUTPUT"
+            echo "package_status=ready" >> "$GITHUB_OUTPUT"
             echo "Paquete encontrado en: $pkg"
+          elif [ -n "$EXPORT_ARTIFACT_NAME" ]; then
+            echo "package_path=" >> "$GITHUB_OUTPUT"
+            echo "package_file_name=" >> "$GITHUB_OUTPUT"
+            echo "package_artifact_name=$EXPORT_ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
+            echo "package_status=export-artifact" >> "$GITHUB_OUTPUT"
+            echo "Se usará el artifact generado por export: $EXPORT_ARTIFACT_NAME"
           else
             echo "package_path=" >> "$GITHUB_OUTPUT"
             echo "package_file_name=" >> "$GITHUB_OUTPUT"
             echo "package_artifact_name=" >> "$GITHUB_OUTPUT"
-            echo "⚠️ No se encontró ningún .zip dentro de $dir" >&2
+            echo "package_status=missing" >> "$GITHUB_OUTPUT"
+            echo "::warning::No se encontró paquete exportado en $dir ni artifact_name en el export." >&2
           fi
 
       - name: Publicar artefacto para promoción
@@ -231,7 +241,7 @@ jobs:
         run: python3 .github/scripts/create_icf_issue.py
 
   promote_qa:
-    if: ${{ inputs.plan == 'dev-to-qa' || inputs.plan == 'dev-qa-prod' }}
+    if: ${{ (inputs.plan == 'dev-to-qa' || inputs.plan == 'dev-qa-prod') && needs.archive_export.outputs.package_status != 'missing' }}
     needs: [export, archive_export]
     runs-on: ubuntu-latest
     environment: qa
@@ -298,7 +308,7 @@ jobs:
         run: shred -u ${{ steps.build_icf.outputs.icf_path }} || true
 
   promote_prod_after_qa:
-    if: ${{ inputs.plan == 'dev-qa-prod' }}
+    if: ${{ inputs.plan == 'dev-qa-prod' && needs.archive_export.outputs.package_status != 'missing' }}
     needs: [promote_qa, export]
     runs-on: ubuntu-latest
     environment: prod
@@ -365,7 +375,7 @@ jobs:
         run: shred -u ${{ steps.build_icf.outputs.icf_path }} || true
 
   promote_prod_from_qa:
-    if: ${{ inputs.plan == 'qa-to-prod' }}
+    if: ${{ inputs.plan == 'qa-to-prod' && needs.archive_export.outputs.package_status != 'missing' }}
     needs: [export, archive_export]
     runs-on: ubuntu-latest
     environment: prod
