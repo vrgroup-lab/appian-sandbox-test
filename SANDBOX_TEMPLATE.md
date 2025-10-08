@@ -38,6 +38,7 @@ Conclusión: al crear un sandbox desde este Template, hay que configurar variabl
 3. Observa:
    - Export: publica `artifact_name` (simulado en MVP) y sube el artifact.
    - Promote QA/PROD: consume `artifact_name` y, si corresponde, pide approval por environment.
+   - Se crea una issue automática con instrucciones para actualizar `ICF_JSON_OVERRIDES` antes de aprobar la importación.
 
 ## Notas de versión del Core
 - Este Sandbox referencia el Core en `@icfbuild` por defecto. Para estabilidad en producción:

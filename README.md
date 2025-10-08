@@ -9,6 +9,7 @@
 - Ejecuta manualmente el workflow “Deploy (wrapper)” con `dry_run=true` para validar la conexión Core ⇄ Sandbox. Verás:
   - Export: crea un ZIP simulado y expone `artifact_path`.
   - Promote: consume ese ZIP y simula la importación en QA.
+- Tras cada export, el pipeline abre una issue automática solicitando completar `ICF_JSON_OVERRIDES` antes de aprobar la importación.
 
 ### Inputs del wrapper
 - `deploy_kind`: Objeto de promoción (`package` | `app`).

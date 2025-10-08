@@ -18,7 +18,8 @@ permissions:
   actions: write
   contents: write      # o write si lo necesitas
   pull-requests: write  # solo si el flujo crea PRs
-  id-token: write 
+  id-token: write
+  issues: write 
 
 jobs:
   validate:
@@ -167,9 +168,96 @@ jobs:
           echo "deployment_uuid=${{ needs.export.outputs.deployment_uuid }}"
           echo "deployment_status=${{ needs.export.outputs.deployment_status }}"
 
+  icf_guidance:
+    name: Registrar instrucciones ICF
+    needs: archive_export
+    runs-on: ubuntu-latest
+    outputs:
+      issue_number: ${{ steps.raise.outputs.issue_number }}
+      issue_url: ${{ steps.raise.outputs.issue_url }}
+    steps:
+      - name: Crear issue con guía para ICF
+        id: raise
+        uses: actions/github-script@v7
+        env:
+          PLAN: ${{ inputs.plan }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          ARTIFACT_DIR: ${{ needs.archive_export.outputs.artifact_dir }}
+          METADATA_PATH: ${{ needs.archive_export.outputs.metadata_path }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const core = require('@actions/core');
+            const plan = process.env.PLAN || 'desconocido';
+            const dryRun = process.env.DRY_RUN || 'false';
+            const artifactDir = process.env.ARTIFACT_DIR || '(sin directorio publicado)';
+            const metadataPath = process.env.METADATA_PATH || '(sin metadata)';
+            const runUrl = process.env.RUN_URL;
+
+            const targetMap = {
+              'dev-to-qa': ['qa'],
+              'dev-qa-prod': ['qa', 'prod'],
+              'qa-to-prod': ['prod']
+            };
+            const targets = targetMap[plan] || [];
+            const targetsList = targets.length
+              ? targets.map(env => `- \`${env}\``).join('\n')
+              : '- _(no se identificó entorno de destino)_';
+
+            const title = `[CI] Completar ICF_JSON_OVERRIDES – Run #${context.runNumber}`;
+            core.info(`Preparando issue: ${title}`);
+
+            const body = [
+              '## ✅ Acción requerida',
+              '',
+              '1. Ve a **Settings → Secrets and variables → Actions → Repository secrets**.',
+              '2. Edita el secreto `ICF_JSON_OVERRIDES` y agrega/actualiza las claves necesarias para esta promoción.',
+              '3. Usa la plantilla `provisioning/icf-template.properties` como referencia para los valores obligatorios.',
+              '4. Una vez actualizada la configuración, guarda el secreto y continúa con la aprobación en GitHub Actions.',
+              '',
+              '### Contexto de la ejecución',
+              `- Plan seleccionado: \`${plan}\``,
+              `- Dry run: \`${dryRun}\``,
+              `- Directorio de artefacto: \`${artifactDir}\``,
+              `- Metadata export: \`${metadataPath}\``,
+              `- Ejecución: ${runUrl}`,
+              '',
+              '### Entornos objetivo detectados',
+              targetsList,
+              '',
+              '> Cierra esta issue cuando los overrides estén listos. Si la promoción se repite, se generará una issue nueva.',
+            ].join('\n');
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            const existing = issues.find(issue => issue.title === title);
+            if (existing) {
+              core.info(`Issue ya existe (#${existing.number}).`);
+              core.setOutput('issue_number', existing.number);
+              core.setOutput('issue_url', existing.html_url);
+              return;
+            }
+
+            const { data: created } = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body
+            });
+
+            core.setOutput('issue_number', created.number);
+            core.setOutput('issue_url', created.html_url);
+            core.notice(`Issue creada: ${created.html_url}`);
+
   promote_qa:
     if: ${{ inputs.plan == 'dev-to-qa' || inputs.plan == 'dev-qa-prod' }}
-    needs: [export, archive_export]
+    needs: [export, archive_export, icf_guidance]
     runs-on: ubuntu-latest
     environment: qa
     steps:
@@ -305,7 +393,7 @@ jobs:
 
   promote_prod_from_qa:
     if: ${{ inputs.plan == 'qa-to-prod' }}
-    needs: [export, archive_export]
+    needs: [export, archive_export, icf_guidance]
     runs-on: ubuntu-latest
     environment: prod
     steps:
