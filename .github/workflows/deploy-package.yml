@@ -99,7 +99,29 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ format('{0}-customization-template', needs.export.outputs.artifact_name) }}
-          path: ${{ steps.prep.outputs.dest }}/customization-template
+          path: ${{ steps.prep.outputs.dest }}/customization-template/raw
+
+      - name: Extraer plantilla de customización
+        if: ${{ needs.export.outputs.customization_template != '' }}
+        env:
+          SOURCE_DIR: ${{ steps.prep.outputs.dest }}/customization-template/raw
+        run: |
+          set -euo pipefail
+          dir="${SOURCE_DIR}"
+          if [ ! -d "$dir" ]; then
+            exit 0
+          fi
+          zip_file="$(find "$dir" -maxdepth 1 -type f -name '*.zip' -print -quit)"
+          if [ -z "$zip_file" ]; then
+            zip_file="$(find "$dir" -maxdepth 1 -type f -print -quit)"
+          fi
+          if [ -z "$zip_file" ]; then
+            echo "No se encontró archivo comprimido de plantilla en ${dir}" >&2
+            exit 0
+          fi
+          out_dir="$(dirname "$dir")/extracted"
+          mkdir -p "$out_dir"
+          unzip -oq "$zip_file" -d "$out_dir"
 
       - name: Descargar plugins
         if: ${{ needs.export.outputs.plugins_zip != '' }}
@@ -169,8 +191,11 @@ jobs:
           set -euo pipefail
           dest="${DEST}"
           path=""
-          if [ -d "${dest}/customization-template" ]; then
-            path="$(find "${dest}/customization-template" -type f -name '*.properties' -print -quit)"
+          if [ -d "${dest}/customization-template/extracted" ]; then
+            path="$(find "${dest}/customization-template/extracted" -type f -name '*.properties' -print -quit)"
+          fi
+          if [ -z "$path" ] && [ -d "${dest}/customization-template/raw" ]; then
+            path="$(find "${dest}/customization-template/raw" -type f -name '*.properties' -print -quit)"
           fi
           if [ -z "$path" ] && [ -d "${dest}/customization" ]; then
             path="$(find "${dest}/customization" -type f -name '*.properties' -print -quit)"
