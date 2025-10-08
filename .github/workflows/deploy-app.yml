@@ -57,10 +57,11 @@ jobs:
     outputs:
       artifact_dir: ${{ steps.publish.outputs.artifact_dir }}
       metadata_path: ${{ steps.publish.outputs.metadata_path }}
-      icf_template_path: ${{ steps.locate_template.outputs.icf_template_path }}
-      icf_template_content_b64: ${{ steps.process_template.outputs.icf_template_content_b64 }}
-      icf_overrides_json_b64: ${{ steps.process_template.outputs.icf_overrides_json_b64 }}
-      icf_template_source: ${{ steps.process_template.outputs.icf_template_source }}
+      icf_template_path: ${{ steps.prepare_icf.outputs.icf_template_path }}
+      icf_template_content_b64: ${{ steps.prepare_icf.outputs.icf_template_content_b64 }}
+      icf_overrides_json_b64: ${{ steps.prepare_icf.outputs.icf_overrides_json_b64 }}
+      icf_template_source: ${{ steps.prepare_icf.outputs.icf_template_source }}
+      icf_template_status: ${{ steps.prepare_icf.outputs.icf_template_status }}
     steps:
       - name: Checkout sandbox
         uses: actions/checkout@v4
@@ -102,32 +103,6 @@ jobs:
           path: ${{ steps.prep.outputs.dest }}/customization-template/raw
           merge-multiple: true
         continue-on-error: true
-
-      - name: Extraer plantilla de customización
-        env:
-          SOURCE_DIR: ${{ steps.prep.outputs.dest }}/customization-template/raw
-        run: |
-          set -euo pipefail
-          dir="${SOURCE_DIR}"
-          echo "Contenido inicial de ${dir}:"
-          ls -R "$dir" || true
-          if [ ! -d "$dir" ]; then
-            exit 0
-          fi
-          zip_file="$(find "$dir" -maxdepth 1 -type f -name '*.zip' -print -quit)"
-          echo "Archivo detectado para extracción: ${zip_file:-<none>}"
-          out_dir="$(dirname "$dir")/extracted"
-          mkdir -p "$out_dir"
-          if [ -n "$zip_file" ]; then
-            unzip -oq "$zip_file" -d "$out_dir"
-          else
-            echo "No hay ZIP; copiando archivos planos a ${out_dir}"
-            while IFS= read -r -d '' file; do
-              cp "$file" "$out_dir/"
-            done < <(find "$dir" -maxdepth 1 -type f -print0)
-          fi
-          echo "Contenido extraído en ${out_dir}:"
-          ls -R "$out_dir" || true
 
       - name: Registrar metadata de export
         env:
@@ -175,114 +150,21 @@ jobs:
           metadata_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
           PY
 
-      - name: Localizar plantilla ICF
-        id: locate_template
+      - name: Preparar plantilla ICF
+        id: prepare_icf
         env:
-          DEST: ${{ steps.prep.outputs.dest }}
-        run: |
-          set -euo pipefail
-          dest="${DEST}"
-          path=""
-          if [ -d "${dest}/customization-template/extracted" ]; then
-            while IFS= read -r -d '' candidate; do
-              echo "Evaluando candidato extraído: $candidate"
-              if unzip -p "$candidate" >/dev/null 2>&1; then
-                continue
-              fi
-              if file "$candidate" | grep -qi 'text'; then
-                path="$candidate"
-                break
-              fi
-            done < <(find "${dest}/customization-template/extracted" -type f \( -name '*.properties' -o -name 'icf*.txt' -o -name '*.txt' \) -print0)
-          fi
-          if [ -z "$path" ] && [ -d "${dest}/customization-template/raw" ]; then
-            while IFS= read -r -d '' candidate; do
-              echo "Evaluando candidato sin extraer: $candidate"
-              if file "$candidate" | grep -qi 'text'; then
-                path="$candidate"
-                break
-              fi
-            done < <(find "${dest}/customization-template/raw" -type f \( -name '*.properties' -o -name 'icf*.txt' -o -name '*.txt' \) -print0)
-          fi
-          if [ -z "$path" ]; then
-            path="$(find "${dest}" -maxdepth 1 -type f -name '*.properties' -print -quit || true)"
-          fi
-          if [ -n "$path" ]; then
-            path="$(realpath "$path")"
-            echo "Plantilla ICF localizada en: $path"
-          else
-            echo "No se encontró plantilla ICF en ${dest}" >&2
-          fi
-          echo "icf_template_path=${path}" >> "$GITHUB_OUTPUT"
-
-      - name: Procesar plantilla ICF
-        id: process_template
-        env:
-          TEMPLATE_PATH: ${{ steps.locate_template.outputs.icf_template_path }}
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import base64
-          import json
-          import os
-          from pathlib import Path
-
-          output_path = Path(os.environ["GITHUB_OUTPUT"])
-          template_path = os.environ.get("TEMPLATE_PATH", "")
-
-          content = ""
-          source = ""
-          if template_path:
-              path = Path(template_path)
-              if path.is_file():
-                  content = path.read_text(encoding="utf-8")
-                  source = str(path)
-
-          def build_overrides(lines: list[str]) -> str:
-              start_idx = 0
-              for idx, line in enumerate(lines):
-                  if line.strip().startswith("##") and "----" in line:
-                      start_idx = idx + 1
-                      break
-              overrides = {}
-              for raw_line in lines[start_idx:]:
-                  stripped = raw_line.strip()
-                  if not stripped or stripped.startswith("##"):
-                      continue
-                  if stripped.startswith("#"):
-                      stripped = stripped.lstrip("#").strip()
-                  if not stripped or stripped.startswith("#"):
-                      continue
-                  if "=" not in stripped:
-                      continue
-                  key, value = stripped.split("=", 1)
-                  overrides[key.strip()] = value.strip()
-              return json.dumps(overrides, indent=2, ensure_ascii=False)
-
-          overrides_json = ""
-          if content:
-              overrides_json = build_overrides(content.splitlines())
-
-          with output_path.open("a", encoding="utf-8") as fh:
-              if content:
-                  fh.write(f"icf_template_content_b64={base64.b64encode(content.encode('utf-8')).decode('ascii')}\n")
-                  fh.write(f"icf_template_source={source}\n")
-              if overrides_json:
-                  fh.write(f"icf_overrides_json_b64={base64.b64encode(overrides_json.encode('utf-8')).decode('ascii')}\n")
-          PY
+          ARTIFACT_DIR: ${{ steps.prep.outputs.dest }}
+          FALLBACK_TEMPLATE_PATH: provisioning/icf-template.properties
+        run: python3 .github/scripts/prepare_icf_template.py
 
       - name: Publicar rutas generadas
         id: publish
         env:
           DEST: ${{ steps.prep.outputs.dest }}
-          ICF_TEMPLATE_PATH: ${{ steps.locate_template.outputs.icf_template_path }}
         run: |
           set -euo pipefail
           echo "artifact_dir=${DEST}" >> "$GITHUB_OUTPUT"
           echo "metadata_path=${DEST}/export-metadata.json" >> "$GITHUB_OUTPUT"
-          if [ -n "${ICF_TEMPLATE_PATH}" ]; then
-            echo "icf_template_path=${ICF_TEMPLATE_PATH}" >> "$GITHUB_OUTPUT"
-          fi
 
       - name: Commit artefactos
         env:

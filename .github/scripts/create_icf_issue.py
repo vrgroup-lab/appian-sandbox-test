@@ -34,9 +34,10 @@ def read_provisioning_template(workspace: Path, provisioning_path: str) -> list[
   return content.splitlines()
 
 
-def extract_properties_section(lines: list[str], provisioning_path: str) -> str:
+def extract_properties_section(lines: list[str], source_path: str) -> str:
+  label = source_path or "plantilla"
   if not lines:
-    return f"> **Nota:** No se encontró `{provisioning_path}`. Carga la plantilla antes de continuar."
+    return f"> **Nota:** No se encontró `{label}`. Carga la plantilla antes de continuar."
 
   start_idx = 0
   for idx, line in enumerate(lines):
@@ -46,10 +47,10 @@ def extract_properties_section(lines: list[str], provisioning_path: str) -> str:
 
   relevant = [line.rstrip() for line in lines[start_idx:] if line.strip()]
   if not relevant:
-    return f"> **Nota:** No se detectó contenido utilizable en `{provisioning_path}`. Verifica la plantilla."
+    return f"> **Nota:** No se detectó contenido utilizable en `{label}`. Verifica la plantilla."
 
   block = "\n".join(relevant)
-  return f"### Extracto de la plantilla de provisioning\n```properties\n{block}\n```"
+  return f"### Extracto de la plantilla ({label})\n```properties\n{block}\n```"
 
 
 def build_overrides_json(lines: list[str]) -> str:
