@@ -108,6 +108,8 @@ jobs:
         run: |
           set -euo pipefail
           dir="${SOURCE_DIR}"
+          echo "Contenido inicial de ${dir}:"
+          ls -R "$dir" || true
           if [ ! -d "$dir" ]; then
             exit 0
           fi
@@ -115,6 +117,7 @@ jobs:
           if [ -z "$zip_file" ]; then
             zip_file="$(find "$dir" -maxdepth 1 -type f -print -quit)"
           fi
+          echo "Archivo detectado para extracción: ${zip_file:-<none>}"
           if [ -z "$zip_file" ]; then
             echo "No se encontró archivo comprimido de plantilla en ${dir}" >&2
             exit 0
@@ -122,6 +125,8 @@ jobs:
           out_dir="$(dirname "$dir")/extracted"
           mkdir -p "$out_dir"
           unzip -oq "$zip_file" -d "$out_dir"
+          echo "Contenido extraído en ${out_dir}:"
+          ls -R "$out_dir" || true
 
       - name: Descargar plugins
         if: ${{ needs.export.outputs.plugins_zip != '' }}
@@ -205,6 +210,9 @@ jobs:
           fi
           if [ -n "$path" ]; then
             path="$(realpath "$path")"
+            echo "Plantilla ICF localizada en: $path"
+          else
+            echo "No se encontró plantilla ICF en ${dest}" >&2
           fi
           echo "icf_template_path=${path}" >> "$GITHUB_OUTPUT"
 

@@ -160,12 +160,14 @@ def main() -> int:
   source_label = provisioning_path
 
   if override_path:
+    log(f"Se recibió ICF_TEMPLATE_PATH: {override_path}")
     candidate = Path(override_path)
     if not candidate.is_absolute():
       candidate = workspace / candidate
     try:
       template_lines = candidate.read_text(encoding="utf-8").splitlines()
       source_label = str(candidate)
+      log(f"Plantilla exportada cargada desde {candidate}")
     except FileNotFoundError:
       log(f"::warning::No se encontró la plantilla exportada en {candidate}")
     except OSError as exc:
@@ -174,6 +176,7 @@ def main() -> int:
   if not template_lines:
     template_lines = read_provisioning_template(workspace, provisioning_path)
     source_label = provisioning_path
+    log(f"Usando plantilla local de fallback: {provisioning_path}")
 
   template_section = extract_properties_section(template_lines, source_label)
   overrides_json = build_overrides_json(template_lines)
