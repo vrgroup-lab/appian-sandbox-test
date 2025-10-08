@@ -197,7 +197,7 @@ jobs:
           dest="${DEST}"
           path=""
           if [ -d "${dest}/customization-template/extracted" ]; then
-            for candidate in $(find "${dest}/customization-template/extracted" -type f \( -name '*.properties' -o -name 'icf*.txt' -o -name '*.txt' \)); do
+            while IFS= read -r -d '' candidate; do
               echo "Evaluando candidato extraído: $candidate"
               if unzip -p "$candidate" >/dev/null 2>&1; then
                 continue
@@ -206,16 +206,16 @@ jobs:
                 path="$candidate"
                 break
               fi
-            done
+            done < <(find "${dest}/customization-template/extracted" -type f \( -name '*.properties' -o -name 'icf*.txt' -o -name '*.txt' \) -print0)
           fi
           if [ -z "$path" ] && [ -d "${dest}/customization-template/raw" ]; then
-            for candidate in $(find "${dest}/customization-template/raw" -type f \( -name '*.properties' -o -name 'icf*.txt' -o -name '*.txt' \)); do
+            while IFS= read -r -d '' candidate; do
               echo "Evaluando candidato sin extraer: $candidate"
               if file "$candidate" | grep -qi 'text'; then
                 path="$candidate"
                 break
               fi
-            done
+            done < <(find "${dest}/customization-template/raw" -type f \( -name '*.properties' -o -name 'icf*.txt' -o -name '*.txt' \) -print0)
           fi
           if [ -z "$path" ] && [ -d "${dest}/customization" ]; then
             path="$(find "${dest}/customization" -type f -name '*.properties' -print -quit)"
