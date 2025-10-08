@@ -207,7 +207,6 @@ def main() -> int:
 
   replacements = {
       "{{PLAN}}": plan,
-      "{{DRY_RUN}}": os.environ.get("DRY_RUN", "false"),
       "{{ARTIFACT_DIR}}": os.environ.get("ARTIFACT_DIR", "(sin directorio publicado)"),
       "{{METADATA_PATH}}": os.environ.get("METADATA_PATH", "(sin metadata)"),
       "{{RUN_URL}}": os.environ.get("RUN_URL", ""),

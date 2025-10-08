@@ -11,11 +11,6 @@ on:
         type: choice
         options: [dev-to-qa, dev-qa-prod]
         default: dev-to-qa
-      dry_run:
-        description: Ejecutar promoción en modo dry-run
-        type: choice
-        options: ['false', 'true']
-        default: 'false'
 
 permissions:
   contents: write
@@ -221,7 +216,6 @@ jobs:
         id: raise
         env:
           PLAN: ${{ inputs.plan }}
-          DRY_RUN: ${{ inputs.dry_run }}
           ARTIFACT_DIR: ${{ needs.archive_export.outputs.artifact_dir }}
           METADATA_PATH: ${{ needs.archive_export.outputs.metadata_path }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -294,7 +288,7 @@ jobs:
           target_env: qa
           package_path: ${{ steps.package_path.outputs.package_path }}
           icf_path: ${{ steps.build_icf.outputs.icf_path }}
-          dry_run: ${{ inputs.dry_run }}
+          dry_run: 'false'
         env:
           APPIAN_API_KEY_TARGET: ${{ secrets.APPIAN_API_KEY_TARGET }}
 
@@ -362,7 +356,7 @@ jobs:
           target_env: prod
           package_path: ${{ steps.package_path.outputs.package_path }}
           icf_path: ${{ steps.build_icf.outputs.icf_path }}
-          dry_run: ${{ inputs.dry_run }}
+          dry_run: 'false'
         env:
           APPIAN_API_KEY_TARGET: ${{ secrets.APPIAN_API_KEY_TARGET }}
 

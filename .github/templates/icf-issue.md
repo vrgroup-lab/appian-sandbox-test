@@ -7,7 +7,6 @@
 
 ### Contexto de la ejecución
 - Plan seleccionado: `{{PLAN}}`
-- Dry run: `{{DRY_RUN}}`
 - Directorio de artefacto: `{{ARTIFACT_DIR}}`
 - Metadata export: `{{METADATA_PATH}}`
 - Ejecución: {{RUN_URL}}
