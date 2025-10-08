@@ -11,6 +11,11 @@ on:
         type: choice
         options: [dev-to-qa, dev-qa-prod]
         default: dev-to-qa
+      dry_run:
+        description: Ejecutar promoción en modo dry-run
+        type: choice
+        options: ['false', 'true']
+        default: 'false'
 
 permissions:
   contents: write
@@ -30,7 +35,7 @@ jobs:
 
   export:
     needs: validate
-    uses: bice-vida/appian-cicd-core/.github/workflows/export.yml@develop
+    uses: vrgroup-lab/appian-cicd-core/.github/workflows/export.yml@icfbuild
     secrets: inherit
     with:
       env: dev
@@ -187,21 +192,135 @@ jobs:
 
   promote_qa:
     needs: [export, archive_export]
-    uses: bice-vida/appian-cicd-core/.github/workflows/promote.yml@develop
-    secrets: inherit
-    with:
-      source_env: dev
-      target_env: qa
-      artifact_name: ${{ needs.export.outputs.artifact_name }}
-      dry_run: false
+    runs-on: ubuntu-latest
+    environment: qa
+    steps:
+      - name: Validar artifact de export
+        run: |
+          if [ -z "$ARTIFACT_NAME" ]; then
+            echo "❌ Export no entregó artifact_name; no se puede promover." >&2
+            exit 1
+          fi
+        env:
+          ARTIFACT_NAME: ${{ needs.export.outputs.artifact_name }}
+
+      - name: Descargar paquete
+        id: download_package
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.export.outputs.artifact_name }}
+          path: ${{ runner.temp }}/package
+
+      - name: Determinar ruta del paquete
+        id: package_path
+        env:
+          DOWNLOAD_DIR: ${{ steps.download_package.outputs.download-path }}
+        run: |
+          set -euo pipefail
+          dir="${DOWNLOAD_DIR}"
+          if [ -z "$dir" ]; then
+            echo "No se pudo resolver la ruta de descarga del paquete." >&2
+            exit 1
+          fi
+          pkg="$(find "$dir" -maxdepth 1 -type f -name '*.zip' | head -n 1)"
+          if [ -z "$pkg" ]; then
+            pkg="$(find "$dir" -maxdepth 1 -type f | head -n 1)"
+          fi
+          if [ -z "$pkg" ]; then
+            echo "No se encontró el paquete exportado en $dir" >&2
+            exit 1
+          fi
+          echo "package_path=$pkg" >> "$GITHUB_OUTPUT"
+
+      - name: Construir ICF efímero
+        id: build_icf
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@icfbuild
+        env:
+          ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES }}
+        with:
+          template_path: provisioning/icf-template.properties
+          env: qa
+          out_path: ${{ runner.temp }}/icf-qa.properties
+
+      - name: Promover paquete
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@icfbuild
+        with:
+          source_env: dev
+          target_env: qa
+          package_path: ${{ steps.package_path.outputs.package_path }}
+          icf_path: ${{ steps.build_icf.outputs.icf_path }}
+          dry_run: ${{ inputs.dry_run }}
+        env:
+          APPIAN_API_KEY_TARGET: ${{ secrets.APPIAN_API_KEY_TARGET }}
+
+      - name: Cleanup ICF
+        if: ${{ always() }}
+        run: shred -u ${{ steps.build_icf.outputs.icf_path }} || true
 
   promote_prod_after_qa:
     if: ${{ inputs.plan == 'dev-qa-prod' }}
-    needs: promote_qa
-    uses: bice-vida/appian-cicd-core/.github/workflows/promote.yml@develop
-    secrets: inherit
-    with:
-      source_env: dev
-      target_env: prod
-      artifact_name: ${{ needs.export.outputs.artifact_name }}
-      dry_run: false
+    needs: [promote_qa, export]
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - name: Validar artifact de export
+        run: |
+          if [ -z "$ARTIFACT_NAME" ]; then
+            echo "❌ Export no entregó artifact_name; no se puede promover." >&2
+            exit 1
+          fi
+        env:
+          ARTIFACT_NAME: ${{ needs.export.outputs.artifact_name }}
+
+      - name: Descargar paquete
+        id: download_package
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.export.outputs.artifact_name }}
+          path: ${{ runner.temp }}/package
+
+      - name: Determinar ruta del paquete
+        id: package_path
+        env:
+          DOWNLOAD_DIR: ${{ steps.download_package.outputs.download-path }}
+        run: |
+          set -euo pipefail
+          dir="${DOWNLOAD_DIR}"
+          if [ -z "$dir" ]; then
+            echo "No se pudo resolver la ruta de descarga del paquete." >&2
+            exit 1
+          fi
+          pkg="$(find "$dir" -maxdepth 1 -type f -name '*.zip' | head -n 1)"
+          if [ -z "$pkg" ]; then
+            pkg="$(find "$dir" -maxdepth 1 -type f | head -n 1)"
+          fi
+          if [ -z "$pkg" ]; then
+            echo "No se encontró el paquete exportado en $dir" >&2
+            exit 1
+          fi
+          echo "package_path=$pkg" >> "$GITHUB_OUTPUT"
+
+      - name: Construir ICF efímero
+        id: build_icf
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@icfbuild
+        env:
+          ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES }}
+        with:
+          template_path: provisioning/icf-template.properties
+          env: prod
+          out_path: ${{ runner.temp }}/icf-prod.properties
+
+      - name: Promover paquete
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@icfbuild
+        with:
+          source_env: dev
+          target_env: prod
+          package_path: ${{ steps.package_path.outputs.package_path }}
+          icf_path: ${{ steps.build_icf.outputs.icf_path }}
+          dry_run: ${{ inputs.dry_run }}
+        env:
+          APPIAN_API_KEY_TARGET: ${{ secrets.APPIAN_API_KEY_TARGET }}
+
+      - name: Cleanup ICF
+        if: ${{ always() }}
+        run: shred -u ${{ steps.build_icf.outputs.icf_path }} || true

@@ -1,10 +1,10 @@
 # 📦 CI/CD Pipeline – Appian - GitHub Actions
 
-> Estado: este repo ahora actúa como Sandbox de una aplicación Appian y consume workflows reutilizables del repo Core (`bice-vida/appian-cicd-core@develop`). El material del antiguo monorepo fue archivado en `legacy_monorepo/`.
+> Estado: este repo ahora actúa como Sandbox de una aplicación Appian y consume workflows reutilizables del repo Core (`vrgroup-lab/appian-cicd-core@icfbuild`). El material del antiguo monorepo fue archivado en `legacy_monorepo/`.
 
 ## Uso rápido (wrapper hacia Core)
 - Workflow sandbox: `/.github/workflows/deploy.yml`
-- Este wrapper ya apunta a `bice-vida/appian-cicd-core/.github/workflows/{export,promote}.yml@develop`.
+- Este wrapper ya apunta a `vrgroup-lab/appian-cicd-core/.github/workflows/{export,promote}.yml@icfbuild`.
 - Requiere variable de repositorio: `APP_UUID` (UUID de la aplicación Appian para este Sandbox).
 - Ejecuta manualmente el workflow “Deploy (wrapper)” con `dry_run=true` para validar la conexión Core ⇄ Sandbox. Verás:
   - Export: crea un ZIP simulado y expone `artifact_path`.

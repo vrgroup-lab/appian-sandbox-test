@@ -24,8 +24,8 @@ Conclusión: al crear un sandbox desde este Template, hay que configurar variabl
    - Define reviewers/aprobaciones si quieres gating manual.
 3. Actions permissions (repo Sandbox):
    - Permite usar reusable workflows. Si usas allowlist, agrega:
-     - `bice-vida/appian-cicd-core/.github/workflows/export.yml@*`
-     - `bice-vida/appian-cicd-core/.github/workflows/promote.yml@*`
+     - `vrgroup-lab/appian-cicd-core/.github/workflows/export.yml@*`
+     - `vrgroup-lab/appian-cicd-core/.github/workflows/promote.yml@*`
 4. Reusable workflows (repo Core):
    - En el repo Core, `Settings` → `Actions` → `General` → “Access for reusable workflows”.
    - Debe permitir acceso desde repos de la organización (o agregar el nuevo Sandbox si es lista seleccionada).
@@ -40,6 +40,5 @@ Conclusión: al crear un sandbox desde este Template, hay que configurar variabl
    - Promote QA/PROD: consume `artifact_name` y, si corresponde, pide approval por environment.
 
 ## Notas de versión del Core
-- Este Sandbox referencia el Core en `@develop` por defecto. Para estabilidad en producción:
+- Este Sandbox referencia el Core en `@icfbuild` por defecto. Para estabilidad en producción:
   - Pinea a un tag (ej. `@v0.1.0`) o a un SHA específico en `/.github/workflows/deploy.yml`.
-
