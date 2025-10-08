@@ -154,9 +154,29 @@ def main() -> int:
   provisioning_path = os.environ.get("PROVISIONING_TEMPLATE_PATH", "provisioning/icf-template.properties")
 
   template_body = read_issue_template(workspace, template_path)
-  provisioning_lines = read_provisioning_template(workspace, provisioning_path)
-  template_section = extract_properties_section(provisioning_lines, provisioning_path)
-  overrides_json = build_overrides_json(provisioning_lines)
+
+  override_path = os.environ.get("ICF_TEMPLATE_PATH", "").strip()
+  template_lines: list[str] = []
+  source_label = provisioning_path
+
+  if override_path:
+    candidate = Path(override_path)
+    if not candidate.is_absolute():
+      candidate = workspace / candidate
+    try:
+      template_lines = candidate.read_text(encoding="utf-8").splitlines()
+      source_label = str(candidate)
+    except FileNotFoundError:
+      log(f"::warning::No se encontró la plantilla exportada en {candidate}")
+    except OSError as exc:
+      log(f"::warning::No se pudo leer la plantilla exportada {candidate}: {exc}")
+
+  if not template_lines:
+    template_lines = read_provisioning_template(workspace, provisioning_path)
+    source_label = provisioning_path
+
+  template_section = extract_properties_section(template_lines, source_label)
+  overrides_json = build_overrides_json(template_lines)
 
   replacements = {
       "{{PLAN}}": plan,
