@@ -197,10 +197,25 @@ jobs:
           dest="${DEST}"
           path=""
           if [ -d "${dest}/customization-template/extracted" ]; then
-            path="$(find "${dest}/customization-template/extracted" -type f -name '*.properties' -print -quit)"
+            for candidate in $(find "${dest}/customization-template/extracted" -type f \( -name '*.properties' -o -name 'icf*.txt' -o -name '*.txt' \)); do
+              echo "Evaluando candidato extraído: $candidate"
+              if unzip -p "$candidate" >/dev/null 2>&1; then
+                continue
+              fi
+              if file "$candidate" | grep -qi 'text'; then
+                path="$candidate"
+                break
+              fi
+            done
           fi
           if [ -z "$path" ] && [ -d "${dest}/customization-template/raw" ]; then
-            path="$(find "${dest}/customization-template/raw" -type f -name '*.properties' -print -quit)"
+            for candidate in $(find "${dest}/customization-template/raw" -type f \( -name '*.properties' -o -name 'icf*.txt' -o -name '*.txt' \)); do
+              echo "Evaluando candidato sin extraer: $candidate"
+              if file "$candidate" | grep -qi 'text'; then
+                path="$candidate"
+                break
+              fi
+            done
           fi
           if [ -z "$path" ] && [ -d "${dest}/customization" ]; then
             path="$(find "${dest}/customization" -type f -name '*.properties' -print -quit)"
