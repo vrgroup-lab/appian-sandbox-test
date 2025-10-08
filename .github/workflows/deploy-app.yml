@@ -112,17 +112,17 @@ jobs:
             exit 0
           fi
           zip_file="$(find "$dir" -maxdepth 1 -type f -name '*.zip' -print -quit)"
-          if [ -z "$zip_file" ]; then
-            zip_file="$(find "$dir" -maxdepth 1 -type f -print -quit)"
-          fi
           echo "Archivo detectado para extracción: ${zip_file:-<none>}"
-          if [ -z "$zip_file" ]; then
-            echo "No se encontró archivo comprimido de plantilla en ${dir}" >&2
-            exit 0
-          fi
           out_dir="$(dirname "$dir")/extracted"
           mkdir -p "$out_dir"
-          unzip -oq "$zip_file" -d "$out_dir"
+          if [ -n "$zip_file" ]; then
+            unzip -oq "$zip_file" -d "$out_dir"
+          else
+            echo "No hay ZIP; copiando archivos planos a ${out_dir}"
+            while IFS= read -r -d '' file; do
+              cp "$file" "$out_dir/"
+            done < <(find "$dir" -maxdepth 1 -type f -print0)
+          fi
           echo "Contenido extraído en ${out_dir}:"
           ls -R "$out_dir" || true
 
