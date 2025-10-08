@@ -53,6 +53,8 @@ jobs:
       icf_template_status: ${{ steps.prepare_icf.outputs.icf_template_status }}
       icf_issue_number: ${{ steps.raise.outputs.issue_number }}
       icf_issue_url: ${{ steps.raise.outputs.issue_url }}
+      package_artifact_name: ${{ steps.locate_package.outputs.package_artifact_name }}
+      package_file_name: ${{ steps.locate_package.outputs.package_file_name }}
     steps:
       - name: Checkout sandbox
         uses: actions/checkout@v4
@@ -169,6 +171,33 @@ jobs:
           FALLBACK_TEMPLATE_PATH: provisioning/icf-template.properties
         run: python3 .github/scripts/prepare_icf_template.py
 
+      - name: Localizar paquete exportado
+        id: locate_package
+        env:
+          DEST: ${{ steps.prep.outputs.dest }}
+        run: |
+          set -euo pipefail
+          dir="${DEST}"
+          pkg="$(find "$dir" -maxdepth 3 -type f -name '*.zip' | head -n 1 || true)"
+          if [ -n "$pkg" ]; then
+            echo "package_path=$pkg" >> "$GITHUB_OUTPUT"
+            echo "package_file_name=$(basename "$pkg")" >> "$GITHUB_OUTPUT"
+            echo "package_artifact_name=promote-package" >> "$GITHUB_OUTPUT"
+            echo "Paquete encontrado en: $pkg"
+          else
+            echo "package_path=" >> "$GITHUB_OUTPUT"
+            echo "package_file_name=" >> "$GITHUB_OUTPUT"
+            echo "package_artifact_name=" >> "$GITHUB_OUTPUT"
+            echo "⚠️ No se encontró ningún .zip dentro de $dir" >&2
+          fi
+
+      - name: Publicar artefacto para promoción
+        if: ${{ steps.locate_package.outputs.package_path != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: promote-package
+          path: ${{ steps.locate_package.outputs.package_path }}
+
       - name: Publicar rutas generadas
         id: publish
         env:
@@ -222,20 +251,20 @@ jobs:
     runs-on: ubuntu-latest
     environment: qa
     steps:
-      - name: Validar artifact de export
+      - name: Validar artefacto de export
         run: |
-          if [ -z "$ARTIFACT_NAME" ]; then
-            echo "❌ Export no entregó artifact_name; no se puede promover." >&2
+          if [ -z "$PACKAGE_ARTIFACT" ]; then
+            echo "❌ No se encontró paquete exportado para promover." >&2
             exit 1
           fi
         env:
-          ARTIFACT_NAME: ${{ needs.export.outputs.artifact_name }}
+          PACKAGE_ARTIFACT: ${{ needs.archive_export.outputs.package_artifact_name }}
 
       - name: Descargar paquete
         id: download_package
         uses: actions/download-artifact@v4
         with:
-          name: ${{ needs.export.outputs.artifact_name }}
+          name: ${{ needs.archive_export.outputs.package_artifact_name }}
           path: ${{ runner.temp }}/package
 
       - name: Determinar ruta del paquete
@@ -289,20 +318,20 @@ jobs:
     runs-on: ubuntu-latest
     environment: prod
     steps:
-      - name: Validar artifact de export
+      - name: Validar artefacto de export
         run: |
-          if [ -z "$ARTIFACT_NAME" ]; then
-            echo "❌ Export no entregó artifact_name; no se puede promover." >&2
+          if [ -z "$PACKAGE_ARTIFACT" ]; then
+            echo "❌ No se encontró paquete exportado para promover." >&2
             exit 1
           fi
         env:
-          ARTIFACT_NAME: ${{ needs.export.outputs.artifact_name }}
+          PACKAGE_ARTIFACT: ${{ needs.archive_export.outputs.package_artifact_name }}
 
       - name: Descargar paquete
         id: download_package
         uses: actions/download-artifact@v4
         with:
-          name: ${{ needs.export.outputs.artifact_name }}
+          name: ${{ needs.archive_export.outputs.package_artifact_name }}
           path: ${{ runner.temp }}/package
 
       - name: Determinar ruta del paquete
