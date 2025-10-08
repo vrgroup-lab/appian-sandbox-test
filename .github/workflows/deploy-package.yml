@@ -38,7 +38,6 @@ jobs:
       deploy_kind: package
       app_uuid: ${{ vars.APP_UUID }}
       package_name: ${{ inputs.package_name }}
-      dry_run: false
 
   archive_export:
     name: Guardar artefactos de export
@@ -288,7 +287,6 @@ jobs:
           target_env: qa
           package_path: ${{ steps.package_path.outputs.package_path }}
           icf_path: ${{ steps.build_icf.outputs.icf_path }}
-          dry_run: 'false'
         env:
           APPIAN_API_KEY_TARGET: ${{ secrets.APPIAN_API_KEY_TARGET }}
 
@@ -356,7 +354,6 @@ jobs:
           target_env: prod
           package_path: ${{ steps.package_path.outputs.package_path }}
           icf_path: ${{ steps.build_icf.outputs.icf_path }}
-          dry_run: 'false'
         env:
           APPIAN_API_KEY_TARGET: ${{ secrets.APPIAN_API_KEY_TARGET }}
 
