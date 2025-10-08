@@ -18,3 +18,8 @@
 > Cierra esta issue cuando los overrides estén listos. Si la promoción se repite, se generará una issue nueva.
 
 {{TEMPLATE_SECTION}}
+
+### Plantilla sugerida para `ICF_JSON_OVERRIDES`
+```json
+{{OVERRIDES_JSON}}
+```

@@ -21,29 +21,63 @@ def read_issue_template(workspace: Path, template_path: str) -> str:
   return ""
 
 
-def extract_template_section(workspace: Path, provisioning_path: str) -> str:
+def read_provisioning_template(workspace: Path, provisioning_path: str) -> list[str]:
   try:
     content = (workspace / provisioning_path).read_text(encoding="utf-8")
   except FileNotFoundError:
     log(f"::warning::No se encontró la plantilla de provisioning en {provisioning_path}")
-    return f"> **Nota:** No se encontró `{provisioning_path}`. Carga la plantilla antes de continuar."
+    return []
   except OSError as exc:
     log(f"::warning::Error al leer {provisioning_path}: {exc}")
-    return f"> **Nota:** No se pudo leer `{provisioning_path}` ({exc})."
+    return []
+  return content.splitlines()
 
-  lines = [line.strip() for line in content.splitlines()]
-  important = [
-      line.lstrip("#").strip()
-      for line in lines
-      if line.startswith("#") and not line.startswith("##")
-  ]
-  important = [line for line in important if line]
 
-  if not important:
+def extract_properties_section(lines: list[str], provisioning_path: str) -> str:
+  if not lines:
+    return f"> **Nota:** No se encontró `{provisioning_path}`. Carga la plantilla antes de continuar."
+
+  start_idx = 0
+  for idx, line in enumerate(lines):
+    if line.strip().startswith("##") and "----" in line:
+      start_idx = idx + 1
+      break
+
+  relevant = [line.rstrip() for line in lines[start_idx:] if line.strip()]
+  if not relevant:
     return f"> **Nota:** No se detectó contenido utilizable en `{provisioning_path}`. Verifica la plantilla."
 
-  joined = "\n".join(important)
-  return f"### Extracto de claves de la plantilla\n```properties\n{joined}\n```"
+  block = "\n".join(relevant)
+  return f"### Extracto de la plantilla de provisioning\n```properties\n{block}\n```"
+
+
+def build_overrides_json(lines: list[str]) -> str:
+  if not lines:
+    return json.dumps({}, indent=2, ensure_ascii=False)
+
+  start_idx = 0
+  for idx, line in enumerate(lines):
+    if line.strip().startswith("##") and "----" in line:
+      start_idx = idx + 1
+      break
+
+  overrides: dict[str, str] = {}
+  for raw_line in lines[start_idx:]:
+    stripped = raw_line.strip()
+    if not stripped or stripped.startswith("##"):
+      continue
+    if stripped.startswith("#"):
+      stripped = stripped.lstrip("#").strip()
+    if not stripped or stripped.startswith("#"):
+      continue
+    if "=" not in stripped:
+      continue
+    key, value = stripped.split("=", 1)
+    key = key.strip()
+    value = value.strip()
+    overrides[key] = value or ""
+
+  return json.dumps(overrides, indent=2, ensure_ascii=False)
 
 
 def render_body(template: str, replacements: dict[str, str]) -> str:
@@ -120,7 +154,9 @@ def main() -> int:
   provisioning_path = os.environ.get("PROVISIONING_TEMPLATE_PATH", "provisioning/icf-template.properties")
 
   template_body = read_issue_template(workspace, template_path)
-  template_section = extract_template_section(workspace, provisioning_path)
+  provisioning_lines = read_provisioning_template(workspace, provisioning_path)
+  template_section = extract_properties_section(provisioning_lines, provisioning_path)
+  overrides_json = build_overrides_json(provisioning_lines)
 
   replacements = {
       "{{PLAN}}": plan,
@@ -130,6 +166,7 @@ def main() -> int:
       "{{RUN_URL}}": os.environ.get("RUN_URL", ""),
       "{{TARGETS_LIST}}": targets_list,
       "{{TEMPLATE_SECTION}}": template_section,
+      "{{OVERRIDES_JSON}}": overrides_json,
   }
 
   if template_body:
@@ -151,7 +188,11 @@ def main() -> int:
             "### Entornos objetivo detectados\n"
             "{{TARGETS_LIST}}\n\n"
             "> Cierra esta issue cuando los overrides estén listos. Si la promoción se repite, se generará una issue nueva.\n\n"
-            "{{TEMPLATE_SECTION}}\n"
+            "{{TEMPLATE_SECTION}}\n\n"
+            "### Plantilla sugerida para `ICF_JSON_OVERRIDES`\n"
+            "```json\n"
+            "{{OVERRIDES_JSON}}\n"
+            "```\n"
         ),
         replacements,
     )
