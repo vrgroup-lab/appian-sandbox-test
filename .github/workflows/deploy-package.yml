@@ -211,7 +211,6 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const core = require('@actions/core');
             const plan = process.env.PLAN || 'desconocido';
             const dryRun = process.env.DRY_RUN || 'false';
             const artifactDir = process.env.ARTIFACT_DIR || '(sin directorio publicado)';
