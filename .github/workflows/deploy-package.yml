@@ -53,6 +53,9 @@ jobs:
       artifact_dir: ${{ steps.publish.outputs.artifact_dir }}
       metadata_path: ${{ steps.publish.outputs.metadata_path }}
       icf_template_path: ${{ steps.locate_template.outputs.icf_template_path }}
+      icf_template_content_b64: ${{ steps.process_template.outputs.icf_template_content_b64 }}
+      icf_overrides_json_b64: ${{ steps.process_template.outputs.icf_overrides_json_b64 }}
+      icf_template_source: ${{ steps.process_template.outputs.icf_template_source }}
     steps:
       - name: Checkout sandbox
         uses: actions/checkout@v4
@@ -231,6 +234,62 @@ jobs:
           fi
           echo "icf_template_path=${path}" >> "$GITHUB_OUTPUT"
 
+      - name: Procesar plantilla ICF
+        id: process_template
+        env:
+          TEMPLATE_PATH: ${{ steps.locate_template.outputs.icf_template_path }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64
+          import json
+          import os
+          from pathlib import Path
+
+          output_path = Path(os.environ["GITHUB_OUTPUT"])
+          template_path = os.environ.get("TEMPLATE_PATH", "")
+
+          content = ""
+          source = ""
+          if template_path:
+              path = Path(template_path)
+              if path.is_file():
+                  content = path.read_text(encoding="utf-8")
+                  source = str(path)
+
+          def build_overrides(lines: list[str]) -> str:
+              start_idx = 0
+              for idx, line in enumerate(lines):
+                  if line.strip().startswith("##") and "----" in line:
+                      start_idx = idx + 1
+                      break
+              overrides = {}
+              for raw_line in lines[start_idx:]:
+                  stripped = raw_line.strip()
+                  if not stripped or stripped.startswith("##"):
+                      continue
+                  if stripped.startswith("#"):
+                      stripped = stripped.lstrip("#").strip()
+                  if not stripped or stripped.startswith("#"):
+                      continue
+                  if "=" not in stripped:
+                      continue
+                  key, value = stripped.split("=", 1)
+                  overrides[key.strip()] = value.strip()
+              return json.dumps(overrides, indent=2, ensure_ascii=False)
+
+          overrides_json = ""
+          if content:
+              overrides_json = build_overrides(content.splitlines())
+
+          with output_path.open("a", encoding="utf-8") as fh:
+              if content:
+                  fh.write(f"icf_template_content_b64={base64.b64encode(content.encode('utf-8')).decode('ascii')}\n")
+                  fh.write(f"icf_template_source={source}\n")
+              if overrides_json:
+                  fh.write(f"icf_overrides_json_b64={base64.b64encode(overrides_json.encode('utf-8')).decode('ascii')}\n")
+          PY
+
       - name: Publicar rutas generadas
         id: publish
         env:
@@ -291,6 +350,9 @@ jobs:
           TEMPLATE_PATH: .github/templates/icf-issue.md
           PROVISIONING_TEMPLATE_PATH: provisioning/icf-template.properties
           ICF_TEMPLATE_PATH: ${{ needs.archive_export.outputs.icf_template_path }}
+          ICF_TEMPLATE_CONTENT_B64: ${{ needs.archive_export.outputs.icf_template_content_b64 }}
+          ICF_OVERRIDES_JSON_B64: ${{ needs.archive_export.outputs.icf_overrides_json_b64 }}
+          ICF_TEMPLATE_SOURCE: ${{ needs.archive_export.outputs.icf_template_source }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 .github/scripts/create_icf_issue.py
 

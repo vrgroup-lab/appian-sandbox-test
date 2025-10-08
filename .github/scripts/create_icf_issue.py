@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import base64
 import json
 import os
 import sys
@@ -155,11 +156,25 @@ def main() -> int:
 
   template_body = read_issue_template(workspace, template_path)
 
-  override_path = os.environ.get("ICF_TEMPLATE_PATH", "").strip()
   template_lines: list[str] = []
   source_label = provisioning_path
 
-  if override_path:
+  content_b64 = os.environ.get("ICF_TEMPLATE_CONTENT_B64", "").strip()
+  overrides_b64 = os.environ.get("ICF_OVERRIDES_JSON_B64", "").strip()
+  template_source = os.environ.get("ICF_TEMPLATE_SOURCE", "").strip()
+
+  if content_b64:
+    try:
+      decoded = base64.b64decode(content_b64).decode("utf-8")
+      template_lines = decoded.splitlines()
+      source_label = template_source or "artifact"
+      log("Plantilla recibida vía output codificado.")
+    except (ValueError, UnicodeDecodeError) as exc:
+      log(f"::warning::No se pudo decodificar ICF_TEMPLATE_CONTENT_B64: {exc}")
+
+  override_path = os.environ.get("ICF_TEMPLATE_PATH", "").strip()
+
+  if not template_lines and override_path:
     log(f"Se recibió ICF_TEMPLATE_PATH: {override_path}")
     candidate = Path(override_path)
     if not candidate.is_absolute():
@@ -179,7 +194,15 @@ def main() -> int:
     log(f"Usando plantilla local de fallback: {provisioning_path}")
 
   template_section = extract_properties_section(template_lines, source_label)
-  overrides_json = build_overrides_json(template_lines)
+
+  if overrides_b64:
+    try:
+      overrides_json = base64.b64decode(overrides_b64).decode("utf-8")
+    except (ValueError, UnicodeDecodeError) as exc:
+      log(f"::warning::No se pudo decodificar ICF_OVERRIDES_JSON_B64: {exc}")
+      overrides_json = build_overrides_json(template_lines)
+  else:
+    overrides_json = build_overrides_json(template_lines)
 
   replacements = {
       "{{PLAN}}": plan,
