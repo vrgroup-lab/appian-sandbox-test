@@ -83,6 +83,21 @@ jobs:
           name: ${{ needs.export.outputs.artifact_name }}
           path: ${{ steps.prep.outputs.dest }}
 
+      - name: Descargar paquete por patrón
+        if: ${{ needs.export.outputs.artifact_name == '' }}
+        uses: actions/download-artifact@v4
+        with:
+          pattern: '*--package-*'
+          path: ${{ steps.prep.outputs.dest }}/package/raw
+          merge-multiple: true
+        continue-on-error: true
+
+      - name: Listar contenido descargado
+        run: |
+          set -euo pipefail
+          echo "Contenido tras la descarga inicial:"
+          ls -R "${{ steps.prep.outputs.dest }}" || true
+
       - name: Descargar scripts de base de datos
         if: ${{ needs.export.outputs.database_scripts != '' && needs.export.outputs.database_scripts != '[]' }}
         uses: actions/download-artifact@v4
@@ -180,7 +195,7 @@ jobs:
         run: |
           set -euo pipefail
           dir="${DEST}"
-          pkg="$(find "$dir" -maxdepth 3 -type f -name '*.zip' | head -n 1 || true)"
+          pkg="$(find "$dir" -type f -name '*.zip' | head -n 1 || true)"
           if [ -n "$pkg" ]; then
             echo "package_path=$pkg" >> "$GITHUB_OUTPUT"
             echo "package_file_name=$(basename "$pkg")" >> "$GITHUB_OUTPUT"
@@ -261,6 +276,12 @@ jobs:
     runs-on: ubuntu-latest
     environment: qa
     steps:
+      - name: Mostrar datos de export
+        run: |
+          echo "package_status=${{ needs.archive_export.outputs.package_status }}"
+          echo "package_artifact_name=${{ needs.archive_export.outputs.package_artifact_name }}"
+          echo "package_file_name=${{ needs.archive_export.outputs.package_file_name }}"
+
       - name: Validar artefacto de export
         run: |
           if [ -z "$PACKAGE_ARTIFACT" ]; then
@@ -288,9 +309,9 @@ jobs:
             echo "No se pudo resolver la ruta de descarga del paquete." >&2
             exit 1
           fi
-          pkg="$(find "$dir" -maxdepth 1 -type f -name '*.zip' | head -n 1)"
+          pkg="$(find "$dir" -type f -name '*.zip' | head -n 1)"
           if [ -z "$pkg" ]; then
-            pkg="$(find "$dir" -maxdepth 1 -type f | head -n 1)"
+            pkg="$(find "$dir" -type f | head -n 1)"
           fi
           if [ -z "$pkg" ]; then
             echo "No se encontró el paquete exportado en $dir" >&2
