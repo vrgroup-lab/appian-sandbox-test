@@ -278,14 +278,6 @@ jobs:
           echo "package_artifact_name=${{ needs.archive_export.outputs.package_artifact_name }}"
           echo "package_file_name=${{ needs.archive_export.outputs.package_file_name }}"
 
-      - name: Descargar plantilla ICF
-        if: ${{ needs.archive_export.outputs.icf_template_path != '' }}
-        id: download_icf_template
-        uses: actions/download-artifact@v4
-        with:
-          name: icf-template
-          path: ${{ runner.temp }}/icf-template
-
       - name: Validar artefacto de export
         run: |
           if [ -z "$PACKAGE_ARTIFACT" ]; then
@@ -293,11 +285,11 @@ jobs:
             exit 1
           fi
         env:
-          PACKAGE_ARTIFACT: ${{ needs.archive_export.outputs.package_artifact_name }}
+         PACKAGE_ARTIFACT: ${{ needs.archive_export.outputs.package_artifact_name }}
 
       - name: Descargar plantilla ICF
         if: ${{ needs.archive_export.outputs.icf_template_path != '' }}
-        id: download_icf_template
+        id: download_icf_template_qa
         uses: actions/download-artifact@v4
         with:
           name: icf-template
@@ -337,7 +329,7 @@ jobs:
         env:
           ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES }}
         with:
-          template_path: ${{ steps.download_icf_template.outputs.download-path != '' && format('{0}/{1}', steps.download_icf_template.outputs.download-path, needs.archive_export.outputs.icf_template_file) || 'provisioning/icf-template.properties' }}
+          template_path: ${{ steps.download_icf_template_qa.outputs.download-path != '' && format('{0}/{1}', steps.download_icf_template_qa.outputs.download-path, needs.archive_export.outputs.icf_template_file) || 'provisioning/icf-template.properties' }}
           env: qa
           out_path: ${{ runner.temp }}/icf-qa.properties
 
@@ -363,6 +355,14 @@ jobs:
     steps:
       - name: Checkout repositorio
         uses: actions/checkout@v4
+
+      - name: Descargar plantilla ICF
+        if: ${{ needs.archive_export.outputs.icf_template_path != '' }}
+        id: download_icf_template_devprod
+        uses: actions/download-artifact@v4
+        with:
+          name: icf-template
+          path: ${{ runner.temp }}/icf-template
 
       - name: Validar artefacto de export
         run: |
@@ -391,9 +391,9 @@ jobs:
             echo "No se pudo resolver la ruta de descarga del artefacto." >&2
             exit 1
           fi
-          pkg="$(find "$dir" -maxdepth 1 -type f -name '*.zip' | head -n 1)"
+          pkg="$(find "$dir" -type f -name '*.zip' | head -n 1)"
           if [ -z "$pkg" ]; then
-            pkg="$(find "$dir" -maxdepth 1 -type f | head -n 1)"
+            pkg="$(find "$dir" -type f | head -n 1)"
           fi
           if [ -z "$pkg" ]; then
             echo "No se encontró el artefacto exportado en $dir" >&2
@@ -407,7 +407,7 @@ jobs:
         env:
           ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES }}
         with:
-          template_path: ${{ steps.download_icf_template.outputs.download-path != '' && format('{0}/{1}', steps.download_icf_template.outputs.download-path, needs.archive_export.outputs.icf_template_file) || 'provisioning/icf-template.properties' }}
+          template_path: ${{ steps.download_icf_template_devprod.outputs.download-path != '' && format('{0}/{1}', steps.download_icf_template_devprod.outputs.download-path, needs.archive_export.outputs.icf_template_file) || 'provisioning/icf-template.properties' }}
           env: prod
           out_path: ${{ runner.temp }}/icf-prod.properties
 
@@ -445,7 +445,7 @@ jobs:
 
       - name: Descargar plantilla ICF
         if: ${{ needs.archive_export.outputs.icf_template_path != '' }}
-        id: download_icf_template
+        id: download_icf_template_qaprod
         uses: actions/download-artifact@v4
         with:
           name: icf-template
@@ -469,9 +469,9 @@ jobs:
             echo "No se pudo resolver la ruta de descarga del artefacto." >&2
             exit 1
           fi
-          pkg="$(find "$dir" -maxdepth 1 -type f -name '*.zip' | head -n 1)"
+          pkg="$(find "$dir" -type f -name '*.zip' | head -n 1)"
           if [ -z "$pkg" ]; then
-            pkg="$(find "$dir" -maxdepth 1 -type f | head -n 1)"
+            pkg="$(find "$dir" -type f | head -n 1)"
           fi
           if [ -z "$pkg" ]; then
             echo "No se encontró el artefacto exportado en $dir" >&2
@@ -485,7 +485,7 @@ jobs:
         env:
           ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES }}
         with:
-          template_path: ${{ steps.download_icf_template.outputs.download-path != '' && format('{0}/{1}', steps.download_icf_template.outputs.download-path, needs.archive_export.outputs.icf_template_file) || 'provisioning/icf-template.properties' }}
+          template_path: ${{ steps.download_icf_template_qaprod.outputs.download-path != '' && format('{0}/{1}', steps.download_icf_template_qaprod.outputs.download-path, needs.archive_export.outputs.icf_template_file) || 'provisioning/icf-template.properties' }}
           env: prod
           out_path: ${{ runner.temp }}/icf-prod.properties
 
