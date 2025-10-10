@@ -56,6 +56,7 @@ jobs:
       icf_overrides_json_b64: ${{ steps.prepare_icf.outputs.icf_overrides_json_b64 }}
       icf_template_source: ${{ steps.prepare_icf.outputs.icf_template_source }}
       icf_template_status: ${{ steps.prepare_icf.outputs.icf_template_status }}
+      icf_template_file: ${{ steps.prepare_icf.outputs.icf_template_file }}
       icf_issue_number: ${{ steps.raise.outputs.issue_number }}
       icf_issue_url: ${{ steps.raise.outputs.issue_url }}
       package_artifact_name: ${{ steps.locate_package.outputs.package_artifact_name }}
@@ -207,6 +208,13 @@ jobs:
           FALLBACK_TEMPLATE_PATH: provisioning/icf-template.properties
         run: python3 .github/scripts/prepare_icf_template.py
 
+      - name: Publicar plantilla ICF para promoción
+        if: ${{ steps.prepare_icf.outputs.icf_template_path != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: icf-template
+          path: ${{ steps.prepare_icf.outputs.icf_template_path }}
+
       - name: Publicar rutas generadas
         id: publish
         env:
@@ -261,11 +269,22 @@ jobs:
     runs-on: ubuntu-latest
     environment: qa
     steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
       - name: Mostrar datos de export
         run: |
           echo "package_status=${{ needs.archive_export.outputs.package_status }}"
           echo "package_artifact_name=${{ needs.archive_export.outputs.package_artifact_name }}"
           echo "package_file_name=${{ needs.archive_export.outputs.package_file_name }}"
+
+      - name: Descargar plantilla ICF
+        if: ${{ needs.archive_export.outputs.icf_template_path != '' }}
+        id: download_icf_template
+        uses: actions/download-artifact@v4
+        with:
+          name: icf-template
+          path: ${{ runner.temp }}/icf-template
 
       - name: Validar artefacto de export
         run: |
@@ -275,6 +294,14 @@ jobs:
           fi
         env:
           PACKAGE_ARTIFACT: ${{ needs.archive_export.outputs.package_artifact_name }}
+
+      - name: Descargar plantilla ICF
+        if: ${{ needs.archive_export.outputs.icf_template_path != '' }}
+        id: download_icf_template
+        uses: actions/download-artifact@v4
+        with:
+          name: icf-template
+          path: ${{ runner.temp }}/icf-template
 
       - name: Descargar paquete/app
         id: download_package
@@ -310,7 +337,7 @@ jobs:
         env:
           ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES }}
         with:
-          template_path: provisioning/icf-template.properties
+          template_path: ${{ steps.download_icf_template.outputs.download-path != '' && format('{0}/{1}', steps.download_icf_template.outputs.download-path, needs.archive_export.outputs.icf_template_file) || 'provisioning/icf-template.properties' }}
           env: qa
           out_path: ${{ runner.temp }}/icf-qa.properties
 
@@ -334,6 +361,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: prod
     steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
       - name: Validar artefacto de export
         run: |
           if [ -z "$PACKAGE_ARTIFACT" ]; then
@@ -377,7 +407,7 @@ jobs:
         env:
           ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES }}
         with:
-          template_path: provisioning/icf-template.properties
+          template_path: ${{ steps.download_icf_template.outputs.download-path != '' && format('{0}/{1}', steps.download_icf_template.outputs.download-path, needs.archive_export.outputs.icf_template_file) || 'provisioning/icf-template.properties' }}
           env: prod
           out_path: ${{ runner.temp }}/icf-prod.properties
 
@@ -401,6 +431,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: prod
     steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
       - name: Validar artefacto de export
         run: |
           if [ -z "$PACKAGE_ARTIFACT" ]; then
@@ -409,6 +442,14 @@ jobs:
           fi
         env:
           PACKAGE_ARTIFACT: ${{ needs.archive_export.outputs.package_artifact_name }}
+
+      - name: Descargar plantilla ICF
+        if: ${{ needs.archive_export.outputs.icf_template_path != '' }}
+        id: download_icf_template
+        uses: actions/download-artifact@v4
+        with:
+          name: icf-template
+          path: ${{ runner.temp }}/icf-template
 
       - name: Descargar paquete/app
         id: download_package
@@ -444,7 +485,7 @@ jobs:
         env:
           ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES }}
         with:
-          template_path: provisioning/icf-template.properties
+          template_path: ${{ steps.download_icf_template.outputs.download-path != '' && format('{0}/{1}', steps.download_icf_template.outputs.download-path, needs.archive_export.outputs.icf_template_file) || 'provisioning/icf-template.properties' }}
           env: prod
           out_path: ${{ runner.temp }}/icf-prod.properties
 

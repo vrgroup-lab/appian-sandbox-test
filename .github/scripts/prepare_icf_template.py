@@ -164,6 +164,8 @@ def main() -> int:
 
   emit_output("icf_template_path", source_path)
   emit_output("icf_template_source", source_path)
+  if source_path:
+    emit_output("icf_template_file", Path(source_path).name)
   emit_output("icf_template_content_b64", base64.b64encode(content.encode("utf-8")).decode("ascii"))
   emit_output("icf_overrides_json_b64", base64.b64encode(overrides_json.encode("utf-8")).decode("ascii"))
   emit_output("icf_template_status", "ready")
