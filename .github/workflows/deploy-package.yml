@@ -258,7 +258,6 @@ jobs:
 
   promote_qa:
     needs: [export, archive_export]
-    if: ${{ (inputs.plan == 'dev-to-qa' || inputs.plan == 'dev-qa-prod') && needs.archive_export.outputs.package_status != 'missing' }}
     runs-on: ubuntu-latest
     environment: qa
     steps:
