@@ -293,6 +293,18 @@ jobs:
           echo "package_artifact_name=${{ needs.archive_export.outputs.package_artifact_name }}"
           echo "package_file_name=${{ needs.archive_export.outputs.package_file_name }}"
 
+      - name: Resolver API Key target (QA)
+        env:
+          TARGET_KEY: ${{ secrets.APPIAN_QA_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TARGET_KEY}" ]; then
+            echo "::error::Falta definir el secreto APPIAN_QA_API_KEY en el environment 'qa'." >&2
+            exit 1
+          fi
+          echo "::add-mask::${TARGET_KEY}"
+          echo "APPIAN_API_KEY_TARGET=${TARGET_KEY}" >> "$GITHUB_ENV"
+
       - name: Descargar plantilla ICF
         if: ${{ needs.archive_export.outputs.icf_template_path != '' }}
         id: download_icf_template_qa
@@ -356,7 +368,7 @@ jobs:
           package_path: ${{ steps.package_path.outputs.package_path }}
           icf_path: ${{ steps.build_icf.outputs.icf_path }}
         env:
-          APPIAN_API_KEY_TARGET: ${{ secrets.APPIAN_API_KEY_TARGET }}
+          APPIAN_API_KEY_TARGET: ${{ env.APPIAN_API_KEY_TARGET }}
 
       - name: Cleanup ICF
         if: ${{ always() }}
@@ -370,6 +382,18 @@ jobs:
     steps:
       - name: Checkout repositorio
         uses: actions/checkout@v4
+
+      - name: Resolver API Key target (Prod)
+        env:
+          TARGET_KEY: ${{ secrets.APPIAN_PROD_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TARGET_KEY}" ]; then
+            echo "::error::Falta definir el secreto APPIAN_PROD_API_KEY en el environment 'prod'." >&2
+            exit 1
+          fi
+          echo "::add-mask::${TARGET_KEY}"
+          echo "APPIAN_API_KEY_TARGET=${TARGET_KEY}" >> "$GITHUB_ENV"
 
       - name: Validar artefacto de export
         run: |
@@ -434,7 +458,7 @@ jobs:
           package_path: ${{ steps.package_path.outputs.package_path }}
           icf_path: ${{ steps.build_icf.outputs.icf_path }}
         env:
-          APPIAN_API_KEY_TARGET: ${{ secrets.APPIAN_API_KEY_TARGET }}
+          APPIAN_API_KEY_TARGET: ${{ env.APPIAN_API_KEY_TARGET }}
 
       - name: Cleanup ICF
         if: ${{ always() }}
