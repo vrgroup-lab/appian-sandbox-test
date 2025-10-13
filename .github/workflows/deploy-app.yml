@@ -343,25 +343,7 @@ jobs:
         with:
           template_path: ${{ steps.download_icf_template_qa.outputs.download-path != '' && format('{0}/{1}', steps.download_icf_template_qa.outputs.download-path, needs.archive_export.outputs.icf_template_file) || 'provisioning/icf-template.properties' }}
           env: qa
-          out_path: ${{ runner.temp }}/customization.properties
-
-      - name: Normalizar nombre del ICF
-        id: normalize_icf_qa
-        env:
-          SOURCE_PATH: ${{ steps.build_icf.outputs.icf_path }}
-          TARGET_PATH: ${{ runner.temp }}/customization.properties
-        run: |
-          set -euo pipefail
-          src="${SOURCE_PATH}"
-          tgt="${TARGET_PATH}"
-          if [ -z "$src" ] || [ ! -f "$src" ]; then
-            echo "::error::No se generó el ICF temporal (src='$src')." >&2
-            exit 1
-          fi
-          if [ "$src" != "$tgt" ]; then
-            cp "$src" "$tgt"
-          fi
-          echo "icf_path=$tgt" >> "$GITHUB_OUTPUT"
+          out_path: ${{ runner.temp }}/icf-qa.properties
 
       - name: Promover aplicación
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@icfbuild
@@ -369,13 +351,13 @@ jobs:
           source_env: dev
           target_env: qa
           package_path: ${{ steps.package_path.outputs.package_path }}
-          icf_path: ${{ steps.normalize_icf_qa.outputs.icf_path }}
+          icf_path: ${{ steps.build_icf.outputs.icf_path }}
         env:
           APPIAN_API_KEY_TARGET: ${{ env.APPIAN_API_KEY_TARGET }}
 
       - name: Cleanup ICF
         if: ${{ always() }}
-        run: shred -u ${{ steps.normalize_icf_qa.outputs.icf_path }} || true
+        run: shred -u ${{ steps.build_icf.outputs.icf_path }} || true
 
   promote_prod_after_qa:
     if: ${{ inputs.plan == 'dev-qa-prod' }}
@@ -451,38 +433,20 @@ jobs:
         with:
           template_path: ${{ steps.download_icf_template_devprod.outputs.download-path != '' && format('{0}/{1}', steps.download_icf_template_devprod.outputs.download-path, needs.archive_export.outputs.icf_template_file) || 'provisioning/icf-template.properties' }}
           env: prod
-          out_path: ${{ runner.temp }}/customization.properties
-
-      - name: Normalizar nombre del ICF
-        id: normalize_icf_devprod
-        env:
-          SOURCE_PATH: ${{ steps.build_icf.outputs.icf_path }}
-          TARGET_PATH: ${{ runner.temp }}/customization.properties
-        run: |
-          set -euo pipefail
-          src="${SOURCE_PATH}"
-          tgt="${TARGET_PATH}"
-          if [ -z "$src" ] || [ ! -f "$src" ]; then
-            echo "::error::No se generó el ICF temporal (src='$src')." >&2
-            exit 1
-          fi
-          if [ "$src" != "$tgt" ]; then
-            cp "$src" "$tgt"
-          fi
-          echo "icf_path=$tgt" >> "$GITHUB_OUTPUT"
+          out_path: ${{ runner.temp }}/icf-prod.properties
       - name: Promover aplicación
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@icfbuild
         with:
           source_env: dev
           target_env: prod
           package_path: ${{ steps.package_path.outputs.package_path }}
-          icf_path: ${{ steps.normalize_icf_devprod.outputs.icf_path }}
+          icf_path: ${{ steps.build_icf.outputs.icf_path }}
         env:
           APPIAN_API_KEY_TARGET: ${{ env.APPIAN_API_KEY_TARGET }}
 
       - name: Cleanup ICF
         if: ${{ always() }}
-        run: shred -u ${{ steps.normalize_icf_devprod.outputs.icf_path }} || true
+        run: shred -u ${{ steps.build_icf.outputs.icf_path }} || true
 
   promote_prod_from_qa:
     if: ${{ inputs.plan == 'qa-to-prod' }}
@@ -558,25 +522,7 @@ jobs:
         with:
           template_path: ${{ steps.download_icf_template_qaprod.outputs.download-path != '' && format('{0}/{1}', steps.download_icf_template_qaprod.outputs.download-path, needs.archive_export.outputs.icf_template_file) || 'provisioning/icf-template.properties' }}
           env: prod
-          out_path: ${{ runner.temp }}/customization.properties
-
-      - name: Normalizar nombre del ICF
-        id: normalize_icf_qaprod
-        env:
-          SOURCE_PATH: ${{ steps.build_icf.outputs.icf_path }}
-          TARGET_PATH: ${{ runner.temp }}/customization.properties
-        run: |
-          set -euo pipefail
-          src="${SOURCE_PATH}"
-          tgt="${TARGET_PATH}"
-          if [ -z "$src" ] || [ ! -f "$src" ]; then
-            echo "::error::No se generó el ICF temporal (src='$src')." >&2
-            exit 1
-          fi
-          if [ "$src" != "$tgt" ]; then
-            cp "$src" "$tgt"
-          fi
-          echo "icf_path=$tgt" >> "$GITHUB_OUTPUT"
+          out_path: ${{ runner.temp }}/icf-prod.properties
 
       - name: Promover aplicación
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@icfbuild
@@ -584,10 +530,10 @@ jobs:
           source_env: qa
           target_env: prod
           package_path: ${{ steps.package_path.outputs.package_path }}
-          icf_path: ${{ steps.normalize_icf_qaprod.outputs.icf_path }}
+          icf_path: ${{ steps.build_icf.outputs.icf_path }}
         env:
           APPIAN_API_KEY_TARGET: ${{ env.APPIAN_API_KEY_TARGET }}
 
       - name: Cleanup ICF
         if: ${{ always() }}
-        run: shred -u ${{ steps.normalize_icf_qaprod.outputs.icf_path }} || true
+        run: shred -u ${{ steps.build_icf.outputs.icf_path }} || true
