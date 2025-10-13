@@ -13,7 +13,8 @@ on:
         default: dev-to-qa
 
 permissions:
-  contents: write
+  actions: write
+  contents: read
   issues: write
 
 jobs:
@@ -287,13 +288,66 @@ jobs:
       - name: Checkout repositorio
         uses: actions/checkout@v4
 
+      - name: Evaluar overrides del ICF
+        id: check_overrides
+        env:
+          RAW_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES }}
+        run: |
+          set -euo pipefail
+          val="${RAW_OVERRIDES}"
+          needs="false"
+          if [ -z "$val" ]; then
+            needs="true"
+          else
+            lower="$(printf '%s' "$val" | tr '[:upper:]' '[:lower:]')"
+            if printf '%s' "$lower" | grep -Eq '__fill_me__|placeholder|to_fill|<replace_me>'; then
+              needs="true"
+            fi
+          fi
+          echo "needs_rerun=$needs" >> "$GITHUB_OUTPUT"
+
+      - name: Relanzar job para refrescar overrides
+        if: ${{ steps.check_overrides.outputs.needs_rerun == 'true' && github.run_attempt == 1 }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const runId = context.runId;
+            const jobName = process.env.GITHUB_JOB;
+            const attempt = Number(process.env.GITHUB_RUN_ATTEMPT || "1");
+            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: runId,
+              per_page: 100,
+            });
+            const job = jobs.find(j => j.name === jobName && j.run_attempt === attempt);
+            if (!job) {
+              core.warning(`No se encontró el job ${jobName} (intento ${attempt}) para relanzar.`);
+              return;
+            }
+            await github.rest.actions.reRunJobForWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              job_id: job.id,
+            });
+            core.info(`Solicitado rerun automático del job ${jobName} (id=${job.id}).`);
+
+      - name: Finalizar intento inicial
+        if: ${{ steps.check_overrides.outputs.needs_rerun == 'true' && github.run_attempt == 1 }}
+        run: |
+          echo "Overrides del ICF no listos. El job se relanzará automáticamente."
+          exit 0
+
       - name: Mostrar datos de export
+        if: ${{ steps.check_overrides.outputs.needs_rerun != 'true' || github.run_attempt > 1 }}
         run: |
           echo "package_status=${{ needs.archive_export.outputs.package_status }}"
           echo "package_artifact_name=${{ needs.archive_export.outputs.package_artifact_name }}"
           echo "package_file_name=${{ needs.archive_export.outputs.package_file_name }}"
 
       - name: Resolver API Key target (QA)
+        if: ${{ steps.check_overrides.outputs.needs_rerun != 'true' || github.run_attempt > 1 }}
         env:
           TARGET_KEY: ${{ secrets.APPIAN_QA_API_KEY }}
         run: |
@@ -306,7 +360,7 @@ jobs:
           echo "APPIAN_API_KEY_TARGET=${TARGET_KEY}" >> "$GITHUB_ENV"
 
       - name: Descargar plantilla ICF
-        if: ${{ needs.archive_export.outputs.icf_template_path != '' }}
+        if: ${{ (steps.check_overrides.outputs.needs_rerun != 'true' || github.run_attempt > 1) && needs.archive_export.outputs.icf_template_path != '' }}
         id: download_icf_template_qa
         uses: actions/download-artifact@v4
         with:
@@ -314,15 +368,17 @@ jobs:
           path: ${{ runner.temp }}/icf-template
 
       - name: Validar artefacto de export
+        if: ${{ steps.check_overrides.outputs.needs_rerun != 'true' || github.run_attempt > 1 }}
         run: |
           if [ -z "$PACKAGE_ARTIFACT" ]; then
             echo "❌ No se encontró paquete exportado para promover." >&2
             exit 1
-          fi
+         fi
         env:
           PACKAGE_ARTIFACT: ${{ needs.archive_export.outputs.package_artifact_name }}
 
       - name: Descargar paquete
+        if: ${{ steps.check_overrides.outputs.needs_rerun != 'true' || github.run_attempt > 1 }}
         id: download_package
         uses: actions/download-artifact@v4
         with:
@@ -330,6 +386,7 @@ jobs:
           path: ${{ runner.temp }}/package
 
       - name: Determinar ruta del paquete
+        if: ${{ steps.check_overrides.outputs.needs_rerun != 'true' || github.run_attempt > 1 }}
         id: package_path
         env:
           DOWNLOAD_DIR: ${{ steps.download_package.outputs.download-path }}
@@ -351,6 +408,7 @@ jobs:
           echo "package_path=$pkg" >> "$GITHUB_OUTPUT"
 
       - name: Construir ICF efímero
+        if: ${{ steps.check_overrides.outputs.needs_rerun != 'true' || github.run_attempt > 1 }}
         id: build_icf
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@icfbuild
         env:
@@ -361,6 +419,7 @@ jobs:
           out_path: ${{ runner.temp }}/customization.properties
 
       - name: Normalizar nombre del ICF
+        if: ${{ steps.check_overrides.outputs.needs_rerun != 'true' || github.run_attempt > 1 }}
         id: normalize_icf
         env:
           SOURCE_PATH: ${{ steps.build_icf.outputs.icf_path }}
@@ -379,6 +438,7 @@ jobs:
           echo "icf_path=$tgt" >> "$GITHUB_OUTPUT"
 
       - name: Promover paquete
+        if: ${{ steps.check_overrides.outputs.needs_rerun != 'true' || github.run_attempt > 1 }}
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@icfbuild
         with:
           source_env: dev
@@ -390,7 +450,13 @@ jobs:
 
       - name: Cleanup ICF
         if: ${{ always() }}
-        run: shred -u ${{ steps.normalize_icf.outputs.icf_path }} || true
+        env:
+          NEEDS_RERUN: ${{ steps.check_overrides.outputs.needs_rerun }}
+        run: |
+          if [ "${NEEDS_RERUN}" = "true" ] && [ "${GITHUB_RUN_ATTEMPT:-1}" = "1" ]; then
+            exit 0
+          fi
+          shred -u ${{ steps.normalize_icf.outputs.icf_path }} || true
 
   promote_prod_after_qa:
     if: ${{ inputs.plan == 'dev-qa-prod' }}
@@ -401,7 +467,59 @@ jobs:
       - name: Checkout repositorio
         uses: actions/checkout@v4
 
+      - name: Evaluar overrides del ICF
+        id: check_overrides
+        env:
+          RAW_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES }}
+        run: |
+          set -euo pipefail
+          val="${RAW_OVERRIDES}"
+          needs="false"
+          if [ -z "$val" ]; then
+            needs="true"
+          else
+            lower="$(printf '%s' "$val" | tr '[:upper:]' '[:lower:]')"
+            if printf '%s' "$lower" | grep -Eq '__fill_me__|placeholder|to_fill|<replace_me>'; then
+              needs="true"
+            fi
+          fi
+          echo "needs_rerun=$needs" >> "$GITHUB_OUTPUT"
+
+      - name: Relanzar job para refrescar overrides
+        if: ${{ steps.check_overrides.outputs.needs_rerun == 'true' && github.run_attempt == 1 }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const runId = context.runId;
+            const jobName = process.env.GITHUB_JOB;
+            const attempt = Number(process.env.GITHUB_RUN_ATTEMPT || "1");
+            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: runId,
+              per_page: 100,
+            });
+            const job = jobs.find(j => j.name === jobName && j.run_attempt === attempt);
+            if (!job) {
+              core.warning(`No se encontró el job ${jobName} (intento ${attempt}) para relanzar.`);
+              return;
+            }
+            await github.rest.actions.reRunJobForWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              job_id: job.id,
+            });
+            core.info(`Solicitado rerun automático del job ${jobName} (id=${job.id}).`);
+
+      - name: Finalizar intento inicial
+        if: ${{ steps.check_overrides.outputs.needs_rerun == 'true' && github.run_attempt == 1 }}
+        run: |
+          echo "Overrides del ICF no listos. El job se relanzará automáticamente."
+          exit 0
+
       - name: Resolver API Key target (Prod)
+        if: ${{ steps.check_overrides.outputs.needs_rerun != 'true' || github.run_attempt > 1 }}
         env:
           TARGET_KEY: ${{ secrets.APPIAN_PROD_API_KEY }}
         run: |
@@ -414,16 +532,17 @@ jobs:
           echo "APPIAN_API_KEY_TARGET=${TARGET_KEY}" >> "$GITHUB_ENV"
 
       - name: Validar artefacto de export
+        if: ${{ steps.check_overrides.outputs.needs_rerun != 'true' || github.run_attempt > 1 }}
         run: |
           if [ -z "$PACKAGE_ARTIFACT" ]; then
             echo "❌ No se encontró paquete exportado para promover." >&2
             exit 1
-          fi
+         fi
         env:
           PACKAGE_ARTIFACT: ${{ needs.archive_export.outputs.package_artifact_name }}
 
       - name: Descargar plantilla ICF
-        if: ${{ needs.archive_export.outputs.icf_template_path != '' }}
+        if: ${{ (steps.check_overrides.outputs.needs_rerun != 'true' || github.run_attempt > 1) && needs.archive_export.outputs.icf_template_path != '' }}
         id: download_icf_template_devprod
         uses: actions/download-artifact@v4
         with:
@@ -431,6 +550,7 @@ jobs:
           path: ${{ runner.temp }}/icf-template
 
       - name: Descargar paquete
+        if: ${{ steps.check_overrides.outputs.needs_rerun != 'true' || github.run_attempt > 1 }}
         id: download_package
         uses: actions/download-artifact@v4
         with:
@@ -438,6 +558,7 @@ jobs:
           path: ${{ runner.temp }}/package
 
       - name: Determinar ruta del paquete
+        if: ${{ steps.check_overrides.outputs.needs_rerun != 'true' || github.run_attempt > 1 }}
         id: package_path
         env:
           DOWNLOAD_DIR: ${{ steps.download_package.outputs.download-path }}
@@ -459,6 +580,7 @@ jobs:
           echo "package_path=$pkg" >> "$GITHUB_OUTPUT"
 
       - name: Construir ICF efímero
+        if: ${{ steps.check_overrides.outputs.needs_rerun != 'true' || github.run_attempt > 1 }}
         id: build_icf
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@icfbuild
         env:
@@ -469,6 +591,7 @@ jobs:
           out_path: ${{ runner.temp }}/customization.properties
 
       - name: Normalizar nombre del ICF
+        if: ${{ steps.check_overrides.outputs.needs_rerun != 'true' || github.run_attempt > 1 }}
         id: normalize_icf
         env:
           SOURCE_PATH: ${{ steps.build_icf.outputs.icf_path }}
@@ -487,6 +610,7 @@ jobs:
           echo "icf_path=$tgt" >> "$GITHUB_OUTPUT"
 
       - name: Promover paquete
+        if: ${{ steps.check_overrides.outputs.needs_rerun != 'true' || github.run_attempt > 1 }}
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@icfbuild
         with:
           source_env: dev
@@ -498,4 +622,10 @@ jobs:
 
       - name: Cleanup ICF
         if: ${{ always() }}
-        run: shred -u ${{ steps.normalize_icf.outputs.icf_path }} || true
+        env:
+          NEEDS_RERUN: ${{ steps.check_overrides.outputs.needs_rerun }}
+        run: |
+          if [ "${NEEDS_RERUN}" = "true" ] && [ "${GITHUB_RUN_ATTEMPT:-1}" = "1" ]; then
+            exit 0
+          fi
+          shred -u ${{ steps.normalize_icf.outputs.icf_path }} || true
