@@ -349,7 +349,7 @@ jobs:
           if [ -z "$PACKAGE_ARTIFACT" ]; then
             echo "❌ No se encontró paquete exportado para promover." >&2
             exit 1
-         fi
+          fi
         env:
           PACKAGE_ARTIFACT: ${{ needs.archive_export.outputs.package_artifact_name }}
 
@@ -510,7 +510,7 @@ jobs:
           if [ -z "$PACKAGE_ARTIFACT" ]; then
             echo "❌ No se encontró paquete exportado para promover." >&2
             exit 1
-         fi
+          fi
         env:
           PACKAGE_ARTIFACT: ${{ needs.archive_export.outputs.package_artifact_name }}
 
@@ -654,7 +654,7 @@ jobs:
           if [ -z "$PACKAGE_ARTIFACT" ]; then
             echo "❌ No se encontró paquete exportado para promover." >&2
             exit 1
-         fi
+          fi
         env:
           PACKAGE_ARTIFACT: ${{ needs.archive_export.outputs.package_artifact_name }}
 
