@@ -112,9 +112,13 @@ def main() -> int:
     candidates.extend(root_candidates)
     extracted_dirs.extend(root_extracted)
 
+  allowed_suffixes = {".properties", ".cfg", ".conf", ".ini", ".env", ".txt"}
   # Prefer .properties, then .txt, ordering by name length and lexicographically.
   chosen: Path | None = None
   candidates = [path for path in candidates if path.is_file() and is_text_file(path)]
+  prioritized = [path for path in candidates if path.suffix.lower() in allowed_suffixes]
+  if prioritized:
+    candidates = prioritized
   status = "missing"
   if candidates:
     chosen = sorted(candidates, key=prefer_key)[0]
@@ -165,6 +169,11 @@ def main() -> int:
     overrides[key.strip()] = value.strip()
 
   overrides_json = json_dumps(overrides)
+
+  if not overrides:
+    if status == "ready":
+      status = "empty"
+    log(f"::warning::El archivo seleccionado ({source_path}) no contiene claves 'key=value'; se omitirá.")
 
   emit_output("icf_template_path", source_path)
   emit_output("icf_template_source", source_path)
