@@ -119,6 +119,8 @@ def main() -> int:
   prioritized = [path for path in candidates if path.suffix.lower() in allowed_suffixes]
   if prioritized:
     candidates = prioritized
+  else:
+    candidates = []
   status = "missing"
   if candidates:
     chosen = sorted(candidates, key=prefer_key)[0]
