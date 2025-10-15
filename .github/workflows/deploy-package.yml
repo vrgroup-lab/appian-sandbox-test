@@ -190,7 +190,7 @@ jobs:
         run: python3 .github/scripts/prepare_icf_template.py
 
       - name: Publicar plantilla ICF para promoción
-        if: ${{ steps.prepare_icf.outputs.icf_template_path != '' }}
+        if: ${{ steps.prepare_icf.outputs.icf_template_status == 'ready' }}
         uses: actions/upload-artifact@v4
         with:
           name: icf-template
@@ -265,6 +265,7 @@ jobs:
 
       - name: Crear issue con guía para ICF
         id: raise
+        if: ${{ steps.prepare_icf.outputs.icf_template_status == 'ready' }}
         env:
           PLAN: ${{ inputs.plan }}
           ARTIFACT_DIR: ${{ steps.publish.outputs.artifact_dir }}
@@ -307,7 +308,7 @@ jobs:
           echo "APPIAN_API_KEY_TARGET=${TARGET_KEY}" >> "$GITHUB_ENV"
 
       - name: Descargar plantilla ICF
-        if: ${{ needs.archive_export.outputs.icf_template_path != '' }}
+        if: ${{ needs.archive_export.outputs.icf_template_status == 'ready' }}
         id: download_icf_template_qa
         uses: actions/download-artifact@v4
         with:
@@ -352,6 +353,7 @@ jobs:
           echo "package_path=$pkg" >> "$GITHUB_OUTPUT"
 
       - name: Construir ICF efímero
+        if: ${{ needs.archive_export.outputs.icf_template_status == 'ready' }}
         id: build_icf
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@icfbuild
         env:
@@ -362,6 +364,7 @@ jobs:
           out_path: ${{ runner.temp }}/customization.properties
 
       - name: Normalizar nombre del ICF
+        if: ${{ needs.archive_export.outputs.icf_template_status == 'ready' }}
         id: normalize_icf
         env:
           SOURCE_PATH: ${{ steps.build_icf.outputs.icf_path }}
@@ -380,6 +383,7 @@ jobs:
           echo "icf_path=$tgt" >> "$GITHUB_OUTPUT"
 
       - name: Promover paquete
+        if: ${{ needs.archive_export.outputs.icf_template_status == 'ready' }}
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@icfbuild
         with:
           source_env: dev
@@ -389,8 +393,18 @@ jobs:
         env:
           APPIAN_API_KEY_TARGET: ${{ env.APPIAN_API_KEY_TARGET }}
 
+      - name: Promover paquete sin ICF
+        if: ${{ needs.archive_export.outputs.icf_template_status != 'ready' }}
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@icfbuild
+        with:
+          source_env: dev
+          target_env: qa
+          package_path: ${{ steps.package_path.outputs.package_path }}
+        env:
+          APPIAN_API_KEY_TARGET: ${{ env.APPIAN_API_KEY_TARGET }}
+
       - name: Cleanup ICF
-        if: ${{ always() }}
+        if: ${{ always() && needs.archive_export.outputs.icf_template_status == 'ready' }}
         run: shred -u ${{ steps.normalize_icf.outputs.icf_path }} || true
 
   promote_prod_after_qa:
@@ -424,7 +438,7 @@ jobs:
           PACKAGE_ARTIFACT: ${{ needs.archive_export.outputs.package_artifact_name }}
 
       - name: Descargar plantilla ICF
-        if: ${{ needs.archive_export.outputs.icf_template_path != '' }}
+        if: ${{ needs.archive_export.outputs.icf_template_status == 'ready' }}
         id: download_icf_template_devprod
         uses: actions/download-artifact@v4
         with:
@@ -460,6 +474,7 @@ jobs:
           echo "package_path=$pkg" >> "$GITHUB_OUTPUT"
 
       - name: Construir ICF efímero
+        if: ${{ needs.archive_export.outputs.icf_template_status == 'ready' }}
         id: build_icf
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@icfbuild
         env:
@@ -470,6 +485,7 @@ jobs:
           out_path: ${{ runner.temp }}/customization.properties
 
       - name: Normalizar nombre del ICF
+        if: ${{ needs.archive_export.outputs.icf_template_status == 'ready' }}
         id: normalize_icf
         env:
           SOURCE_PATH: ${{ steps.build_icf.outputs.icf_path }}
@@ -488,6 +504,7 @@ jobs:
           echo "icf_path=$tgt" >> "$GITHUB_OUTPUT"
 
       - name: Promover paquete
+        if: ${{ needs.archive_export.outputs.icf_template_status == 'ready' }}
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@icfbuild
         with:
           source_env: dev
@@ -497,6 +514,16 @@ jobs:
         env:
           APPIAN_API_KEY_TARGET: ${{ env.APPIAN_API_KEY_TARGET }}
 
+      - name: Promover paquete sin ICF
+        if: ${{ needs.archive_export.outputs.icf_template_status != 'ready' }}
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@icfbuild
+        with:
+          source_env: dev
+          target_env: prod
+          package_path: ${{ steps.package_path.outputs.package_path }}
+        env:
+          APPIAN_API_KEY_TARGET: ${{ env.APPIAN_API_KEY_TARGET }}
+
       - name: Cleanup ICF
-        if: ${{ always() }}
+        if: ${{ always() && needs.archive_export.outputs.icf_template_status == 'ready' }}
         run: shred -u ${{ steps.normalize_icf.outputs.icf_path }} || true

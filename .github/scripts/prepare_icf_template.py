@@ -115,9 +115,11 @@ def main() -> int:
   # Prefer .properties, then .txt, ordering by name length and lexicographically.
   chosen: Path | None = None
   candidates = [path for path in candidates if path.is_file() and is_text_file(path)]
+  status = "missing"
   if candidates:
     chosen = sorted(candidates, key=prefer_key)[0]
     log(f"Plantilla encontrada: {chosen}")
+    status = "ready"
   else:
     log("::warning::No se encontró plantilla en los artefactos descargados.")
 
@@ -136,10 +138,12 @@ def main() -> int:
       log(f"Usando plantilla de fallback {fallback}")
       content = fallback.read_text(encoding="utf-8")
       source_path = str(fallback)
+      if status == "missing":
+        status = "fallback"
 
   if content is None:
     log("::warning::No se obtuvo contenido de plantilla ICF.")
-    emit_output("icf_template_status", "missing")
+    emit_output("icf_template_status", status)
     return 0
 
   lines = content.splitlines()
@@ -168,7 +172,7 @@ def main() -> int:
     emit_output("icf_template_file", Path(source_path).name)
   emit_output("icf_template_content_b64", base64.b64encode(content.encode("utf-8")).decode("ascii"))
   emit_output("icf_overrides_json_b64", base64.b64encode(overrides_json.encode("utf-8")).decode("ascii"))
-  emit_output("icf_template_status", "ready")
+  emit_output("icf_template_status", status)
 
   return 0
 
