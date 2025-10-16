@@ -1,9 +1,12 @@
 name: demo-rerun-job
-
 on:
   workflow_dispatch:
   push:
     branches: [ main ]
+
+permissions:
+  actions: write   # Necesario para re-run
+  contents: read
 
 jobs:
   job1_build:
@@ -31,17 +34,24 @@ jobs:
     steps:
       - run: echo "Job 3 se ejecuta cuando job2_flaky termina OK"
 
-  # Este job re-lanza automáticamente los jobs fallidos del run actual
   auto_rerun_failed:
-    # Se ejecuta cuando algún job previo falló
-    if: ${{ failure() }}
+    # Evita loops infinitos: solo reintenta si es el primer intento del run
+    if: ${{ failure() && github.run_attempt < 2 }}
     runs-on: ubuntu-latest
     needs: [job1_build, job2_flaky, job3_after]
     steps:
-      - name: Re-run failed jobs of this run
+      # Opción 1: sin checkout, pasar el repo explícito
+      - name: Re-run failed jobs (sin checkout)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh --version
-          echo "Re-ejecutando jobs fallidos del run ${{ github.run_id }}..."
-          gh run rerun ${{ github.run_id }} --failed
+          gh run rerun ${{ github.run_id }} --failed --repo "${{ github.repository }}"
+
+      # Opción 2 (alternativa): hacer checkout para que exista .git y no necesitar --repo
+      # - uses: actions/checkout@v4
+      # - name: Re-run failed jobs (con checkout)
+      #   env:
+      #     GH_TOKEN: ${{ github.token }}
+      #   run: |
+      #     gh run rerun ${{ github.run_id }} --failed
