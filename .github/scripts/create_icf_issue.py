@@ -151,6 +151,16 @@ def main() -> int:
   if targets:
     targets_list = "\n".join(f"- `{env}`" for env in targets)
 
+  def secret_name(env: str) -> str:
+    return f"ICF_JSON_OVERRIDES_{env.upper()}"
+
+  secrets_lines: list[str] = []
+  for env in targets:
+    secrets_lines.append(f"- `{secret_name(env)}` (env: `{env}`)")
+  if not secrets_lines:
+    secrets_lines.append("- _(no se identificó entorno de destino para actualizar)_")
+  secrets_section = "\n".join(secrets_lines)
+
   workspace = Path(os.environ.get("GITHUB_WORKSPACE", Path.cwd()))
   template_path = os.environ.get("TEMPLATE_PATH", ".github/templates/icf-issue.md")
   provisioning_path = os.environ.get("PROVISIONING_TEMPLATE_PATH", "provisioning/icf-template.properties")
@@ -162,6 +172,8 @@ def main() -> int:
 
   content_b64 = os.environ.get("ICF_TEMPLATE_CONTENT_B64", "").strip()
   overrides_b64 = os.environ.get("ICF_OVERRIDES_JSON_B64", "").strip()
+  overrides_qa_b64 = os.environ.get("ICF_OVERRIDES_QA_JSON_B64", "").strip()
+  overrides_prod_b64 = os.environ.get("ICF_OVERRIDES_PROD_JSON_B64", "").strip()
   template_source = os.environ.get("ICF_TEMPLATE_SOURCE", "").strip()
 
   if content_b64:
@@ -205,6 +217,29 @@ def main() -> int:
   else:
     overrides_json = build_overrides_json(template_lines)
 
+  def decode_override(custom_b64: str, fallback: str) -> str:
+    if not custom_b64:
+      return fallback
+    try:
+      return base64.b64decode(custom_b64).decode("utf-8")
+    except (ValueError, UnicodeDecodeError) as exc:
+      log(f"::warning::No se pudo decodificar overrides específicos ({custom_b64[:8]}…): {exc}")
+      return fallback
+
+  overrides_qa_json = decode_override(overrides_qa_b64, overrides_json)
+  overrides_prod_json = decode_override(overrides_prod_b64, overrides_json)
+
+  targeted_envs = set(targets)
+  if not targeted_envs:
+    targeted_envs = {"qa"}
+
+  env_sections: list[str] = []
+  if "qa" in targeted_envs:
+    env_sections.append(f"#### QA\n```json\n{overrides_qa_json}\n```")
+  if "prod" in targeted_envs:
+    env_sections.append(f"#### Prod\n```json\n{overrides_prod_json}\n```")
+  overrides_by_env = "\n\n".join(env_sections) if env_sections else "_(No hay overrides sugeridos)_"
+
   replacements = {
       "{{PLAN}}": plan,
       "{{ARTIFACT_DIR}}": os.environ.get("ARTIFACT_DIR", "(sin directorio publicado)"),
@@ -213,6 +248,10 @@ def main() -> int:
       "{{TARGETS_LIST}}": targets_list,
       "{{TEMPLATE_SECTION}}": template_section,
       "{{OVERRIDES_JSON}}": overrides_json,
+      "{{OVERRIDES_QA_JSON}}": overrides_qa_json,
+      "{{OVERRIDES_PROD_JSON}}": overrides_prod_json,
+      "{{SECRETS_SECTION}}": secrets_section,
+      "{{OVERRIDES_BY_ENV}}": overrides_by_env,
   }
 
   if template_body:

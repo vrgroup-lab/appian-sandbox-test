@@ -54,6 +54,8 @@ jobs:
       icf_template_path: ${{ steps.prepare_icf.outputs.icf_template_path }}
       icf_template_content_b64: ${{ steps.prepare_icf.outputs.icf_template_content_b64 }}
       icf_overrides_json_b64: ${{ steps.prepare_icf.outputs.icf_overrides_json_b64 }}
+      icf_overrides_qa_json_b64: ${{ steps.prepare_icf.outputs.icf_overrides_qa_json_b64 }}
+      icf_overrides_prod_json_b64: ${{ steps.prepare_icf.outputs.icf_overrides_prod_json_b64 }}
       icf_template_source: ${{ steps.prepare_icf.outputs.icf_template_source }}
       icf_template_status: ${{ steps.prepare_icf.outputs.icf_template_status }}
       icf_template_file: ${{ steps.prepare_icf.outputs.icf_template_file }}
@@ -259,6 +261,8 @@ jobs:
           ICF_TEMPLATE_PATH: ${{ steps.prepare_icf.outputs.icf_template_path }}
           ICF_TEMPLATE_CONTENT_B64: ${{ steps.prepare_icf.outputs.icf_template_content_b64 }}
           ICF_OVERRIDES_JSON_B64: ${{ steps.prepare_icf.outputs.icf_overrides_json_b64 }}
+          ICF_OVERRIDES_QA_JSON_B64: ${{ steps.prepare_icf.outputs.icf_overrides_qa_json_b64 }}
+          ICF_OVERRIDES_PROD_JSON_B64: ${{ steps.prepare_icf.outputs.icf_overrides_prod_json_b64 }}
           ICF_TEMPLATE_SOURCE: ${{ steps.prepare_icf.outputs.icf_template_source }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 .github/scripts/create_icf_issue.py
@@ -339,7 +343,7 @@ jobs:
         id: build_icf
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@icfbuild
         env:
-          ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES }}
+          ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES_QA }}
         with:
           template_path: ${{ steps.download_icf_template_qa.outputs.download-path != '' && format('{0}/{1}', steps.download_icf_template_qa.outputs.download-path, needs.archive_export.outputs.icf_template_file) || 'provisioning/icf-template.properties' }}
           env: qa
@@ -429,7 +433,7 @@ jobs:
         id: build_icf
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@icfbuild
         env:
-          ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES }}
+          ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES_PROD }}
         with:
           template_path: ${{ steps.download_icf_template_devprod.outputs.download-path != '' && format('{0}/{1}', steps.download_icf_template_devprod.outputs.download-path, needs.archive_export.outputs.icf_template_file) || 'provisioning/icf-template.properties' }}
           env: prod
@@ -518,7 +522,7 @@ jobs:
         id: build_icf
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@icfbuild
         env:
-          ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES }}
+          ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES_PROD }}
         with:
           template_path: ${{ steps.download_icf_template_qaprod.outputs.download-path != '' && format('{0}/{1}', steps.download_icf_template_qaprod.outputs.download-path, needs.archive_export.outputs.icf_template_file) || 'provisioning/icf-template.properties' }}
           env: prod

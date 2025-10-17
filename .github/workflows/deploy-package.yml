@@ -50,6 +50,8 @@ jobs:
       icf_template_path: ${{ steps.prepare_icf.outputs.icf_template_path }}
       icf_template_content_b64: ${{ steps.prepare_icf.outputs.icf_template_content_b64 }}
       icf_overrides_json_b64: ${{ steps.prepare_icf.outputs.icf_overrides_json_b64 }}
+      icf_overrides_qa_json_b64: ${{ steps.prepare_icf.outputs.icf_overrides_qa_json_b64 }}
+      icf_overrides_prod_json_b64: ${{ steps.prepare_icf.outputs.icf_overrides_prod_json_b64 }}
       icf_template_source: ${{ steps.prepare_icf.outputs.icf_template_source }}
       icf_template_status: ${{ steps.prepare_icf.outputs.icf_template_status }}
       icf_template_file: ${{ steps.prepare_icf.outputs.icf_template_file }}
@@ -277,6 +279,8 @@ jobs:
           ICF_TEMPLATE_PATH: ${{ steps.prepare_icf.outputs.icf_template_path }}
           ICF_TEMPLATE_CONTENT_B64: ${{ steps.prepare_icf.outputs.icf_template_content_b64 }}
           ICF_OVERRIDES_JSON_B64: ${{ steps.prepare_icf.outputs.icf_overrides_json_b64 }}
+          ICF_OVERRIDES_QA_JSON_B64: ${{ steps.prepare_icf.outputs.icf_overrides_qa_json_b64 }}
+          ICF_OVERRIDES_PROD_JSON_B64: ${{ steps.prepare_icf.outputs.icf_overrides_prod_json_b64 }}
           ICF_TEMPLATE_SOURCE: ${{ steps.prepare_icf.outputs.icf_template_source }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 .github/scripts/create_icf_issue.py
@@ -294,7 +298,6 @@ jobs:
           echo "package_status=${{ needs.archive_export.outputs.package_status }}"
           echo "package_artifact_name=${{ needs.archive_export.outputs.package_artifact_name }}"
           echo "package_file_name=${{ needs.archive_export.outputs.package_file_name }}"
-          echo "export_artifact_name=${{ needs.export.outputs.artifact_name }}"
 
       - name: Resolver artifacto de paquete
         id: resolve_package_qa
@@ -303,9 +306,6 @@ jobs:
           status="${PACKAGE_STATUS}"
           archive_name="${PACKAGE_ARTIFACT}"
           export_name="${EXPORT_ARTIFACT}"
-          echo "QA package_status=$status"
-          echo "QA archive_export.package_artifact_name='${archive_name}'"
-          echo "QA export.artifact_name='${export_name}'"
           resolved="$archive_name"
           if [ -z "$resolved" ]; then
             if [ "$status" = "ready" ]; then
@@ -314,7 +314,6 @@ jobs:
               resolved="$export_name"
             fi
           fi
-          echo "QA resolved_artifact='$resolved'"
           echo "artifact_name=$resolved" >> "$GITHUB_OUTPUT"
         env:
           PACKAGE_STATUS: ${{ needs.archive_export.outputs.package_status }}
@@ -343,8 +342,6 @@ jobs:
 
       - name: Validar artefacto de export
         run: |
-          echo "PACKAGE_STATUS=$PACKAGE_STATUS"
-          echo "PACKAGE_ARTIFACT=$PACKAGE_ARTIFACT"
           if [ "$PACKAGE_STATUS" = "missing" ]; then
             echo "❌ El export no generó paquete para promover." >&2
             exit 1
@@ -390,7 +387,7 @@ jobs:
         id: build_icf
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@icfbuild
         env:
-          ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES }}
+          ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES_QA }}
         with:
           template_path: ${{ steps.download_icf_template_qa.outputs.download-path != '' && format('{0}/{1}', steps.download_icf_template_qa.outputs.download-path, needs.archive_export.outputs.icf_template_file) || 'provisioning/icf-template.properties' }}
           env: qa
@@ -468,9 +465,6 @@ jobs:
           status="${PACKAGE_STATUS}"
           archive_name="${PACKAGE_ARTIFACT}"
           export_name="${EXPORT_ARTIFACT}"
-          echo "PROD package_status=$status"
-          echo "PROD archive_export.package_artifact_name='${archive_name}'"
-          echo "PROD export.artifact_name='${export_name}'"
           resolved="$archive_name"
           if [ -z "$resolved" ]; then
             if [ "$status" = "ready" ]; then
@@ -479,7 +473,6 @@ jobs:
               resolved="$export_name"
             fi
           fi
-          echo "PROD resolved_artifact='$resolved'"
           echo "artifact_name=$resolved" >> "$GITHUB_OUTPUT"
         env:
           PACKAGE_STATUS: ${{ needs.archive_export.outputs.package_status }}
@@ -488,8 +481,6 @@ jobs:
 
       - name: Validar artefacto de export
         run: |
-          echo "PACKAGE_STATUS=$PACKAGE_STATUS"
-          echo "PACKAGE_ARTIFACT=$PACKAGE_ARTIFACT"
           if [ "$PACKAGE_STATUS" = "missing" ]; then
             echo "❌ El export no generó paquete para promover." >&2
             exit 1
@@ -543,7 +534,7 @@ jobs:
         id: build_icf
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@icfbuild
         env:
-          ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES }}
+          ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES_PROD }}
         with:
           template_path: ${{ steps.download_icf_template_devprod.outputs.download-path != '' && format('{0}/{1}', steps.download_icf_template_devprod.outputs.download-path, needs.archive_export.outputs.icf_template_file) || 'provisioning/icf-template.properties' }}
           env: prod

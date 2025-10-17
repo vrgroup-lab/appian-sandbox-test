@@ -1,9 +1,10 @@
 ## ✅ Acción requerida
 
 1. Ve a **Settings → Secrets and variables → Actions → Repository secrets**.
-2. Edita el secreto `ICF_JSON_OVERRIDES` y agrega/actualiza las claves necesarias para esta promoción.
+2. Actualiza los siguientes secretos (uno por entorno):
+{{SECRETS_SECTION}}
 3. Usa la plantilla `provisioning/icf-template.properties` como referencia para los valores obligatorios.
-4. Una vez actualizada la configuración, guarda el secreto y continúa con la aprobación en GitHub Actions.
+4. Una vez actualizadas las credenciales, guarda los secretos y continúa con la aprobación en GitHub Actions.
 
 ### Contexto de la ejecución
 - Plan seleccionado: `{{PLAN}}`
@@ -18,7 +19,5 @@
 
 {{TEMPLATE_SECTION}}
 
-### Plantilla sugerida para `ICF_JSON_OVERRIDES`
-```json
-{{OVERRIDES_JSON}}
-```
+### Plantillas sugeridas por entorno
+{{OVERRIDES_BY_ENV}}
