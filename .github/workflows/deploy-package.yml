@@ -300,12 +300,20 @@ jobs:
         run: |
           set -euo pipefail
           artifact="${PACKAGE_ARTIFACT}"
+          status="${PACKAGE_STATUS}"
+          if [ -z "$artifact" ]; then
+            if [ "$status" = "ready" ]; then
+              artifact="promote-package"
+            fi
+          fi
           if [ -z "$artifact" ]; then
             artifact="${EXPORT_ARTIFACT}"
           fi
+          echo "Resolved package artifact: '${artifact}' (status=${status}, export='${EXPORT_ARTIFACT}')" >&2
           echo "artifact_name=$artifact" >> "$GITHUB_OUTPUT"
         env:
           PACKAGE_ARTIFACT: ${{ needs.archive_export.outputs.package_artifact_name }}
+          PACKAGE_STATUS: ${{ needs.archive_export.outputs.package_status }}
           EXPORT_ARTIFACT: ${{ needs.export.outputs.artifact_name }}
 
       - name: Resolver API Key target (QA)
@@ -451,12 +459,20 @@ jobs:
         run: |
           set -euo pipefail
           artifact="${PACKAGE_ARTIFACT}"
+          status="${PACKAGE_STATUS}"
+          if [ -z "$artifact" ]; then
+            if [ "$status" = "ready" ]; then
+              artifact="promote-package"
+            fi
+          fi
           if [ -z "$artifact" ]; then
             artifact="${EXPORT_ARTIFACT}"
           fi
+          echo "Resolved package artifact: '${artifact}' (status=${status}, export='${EXPORT_ARTIFACT}')" >&2
           echo "artifact_name=$artifact" >> "$GITHUB_OUTPUT"
         env:
           PACKAGE_ARTIFACT: ${{ needs.archive_export.outputs.package_artifact_name }}
+          PACKAGE_STATUS: ${{ needs.archive_export.outputs.package_status }}
           EXPORT_ARTIFACT: ${{ needs.export.outputs.artifact_name }}
 
       - name: Validar artefacto de export
