@@ -295,6 +295,19 @@ jobs:
           echo "package_artifact_name=${{ needs.archive_export.outputs.package_artifact_name }}"
           echo "package_file_name=${{ needs.archive_export.outputs.package_file_name }}"
 
+      - name: Resolver artifacto de paquete
+        id: resolve_package_qa
+        run: |
+          set -euo pipefail
+          artifact="${PACKAGE_ARTIFACT}"
+          if [ -z "$artifact" ]; then
+            artifact="${EXPORT_ARTIFACT}"
+          fi
+          echo "artifact_name=$artifact" >> "$GITHUB_OUTPUT"
+        env:
+          PACKAGE_ARTIFACT: ${{ needs.archive_export.outputs.package_artifact_name }}
+          EXPORT_ARTIFACT: ${{ needs.export.outputs.artifact_name }}
+
       - name: Resolver API Key target (QA)
         env:
           TARGET_KEY: ${{ secrets.APPIAN_QA_API_KEY }}
@@ -317,18 +330,23 @@ jobs:
 
       - name: Validar artefacto de export
         run: |
+          if [ "$PACKAGE_STATUS" = "missing" ]; then
+            echo "❌ El export no generó paquete para promover." >&2
+            exit 1
+          fi
           if [ -z "$PACKAGE_ARTIFACT" ]; then
             echo "❌ No se encontró paquete exportado para promover." >&2
             exit 1
           fi
         env:
-          PACKAGE_ARTIFACT: ${{ needs.archive_export.outputs.package_artifact_name }}
+          PACKAGE_STATUS: ${{ needs.archive_export.outputs.package_status }}
+          PACKAGE_ARTIFACT: ${{ steps.resolve_package_qa.outputs.artifact_name }}
 
       - name: Descargar paquete
         id: download_package
         uses: actions/download-artifact@v4
         with:
-          name: ${{ needs.archive_export.outputs.package_artifact_name }}
+          name: ${{ steps.resolve_package_qa.outputs.artifact_name }}
           path: ${{ runner.temp }}/package
 
       - name: Determinar ruta del paquete
@@ -428,14 +446,32 @@ jobs:
           echo "::add-mask::${TARGET_KEY}"
           echo "APPIAN_API_KEY_TARGET=${TARGET_KEY}" >> "$GITHUB_ENV"
 
+      - name: Resolver artifacto de paquete
+        id: resolve_package_prod
+        run: |
+          set -euo pipefail
+          artifact="${PACKAGE_ARTIFACT}"
+          if [ -z "$artifact" ]; then
+            artifact="${EXPORT_ARTIFACT}"
+          fi
+          echo "artifact_name=$artifact" >> "$GITHUB_OUTPUT"
+        env:
+          PACKAGE_ARTIFACT: ${{ needs.archive_export.outputs.package_artifact_name }}
+          EXPORT_ARTIFACT: ${{ needs.export.outputs.artifact_name }}
+
       - name: Validar artefacto de export
         run: |
+          if [ "$PACKAGE_STATUS" = "missing" ]; then
+            echo "❌ El export no generó paquete para promover." >&2
+            exit 1
+          fi
           if [ -z "$PACKAGE_ARTIFACT" ]; then
             echo "❌ No se encontró paquete exportado para promover." >&2
             exit 1
           fi
         env:
-          PACKAGE_ARTIFACT: ${{ needs.archive_export.outputs.package_artifact_name }}
+          PACKAGE_STATUS: ${{ needs.archive_export.outputs.package_status }}
+          PACKAGE_ARTIFACT: ${{ steps.resolve_package_prod.outputs.artifact_name }}
 
       - name: Descargar plantilla ICF
         if: ${{ needs.archive_export.outputs.icf_template_status == 'ready' }}
@@ -449,7 +485,7 @@ jobs:
         id: download_package
         uses: actions/download-artifact@v4
         with:
-          name: ${{ needs.archive_export.outputs.package_artifact_name }}
+          name: ${{ steps.resolve_package_prod.outputs.artifact_name }}
           path: ${{ runner.temp }}/package
 
       - name: Determinar ruta del paquete
