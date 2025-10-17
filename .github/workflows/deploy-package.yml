@@ -296,6 +296,31 @@ jobs:
           echo "package_file_name=${{ needs.archive_export.outputs.package_file_name }}"
           echo "export_artifact_name=${{ needs.export.outputs.artifact_name }}"
 
+      - name: Resolver artifacto de paquete
+        id: resolve_package_qa
+        run: |
+          set -euo pipefail
+          status="${PACKAGE_STATUS}"
+          archive_name="${PACKAGE_ARTIFACT}"
+          export_name="${EXPORT_ARTIFACT}"
+          echo "QA package_status=$status"
+          echo "QA archive_export.package_artifact_name='${archive_name}'"
+          echo "QA export.artifact_name='${export_name}'"
+          resolved="$archive_name"
+          if [ -z "$resolved" ]; then
+            if [ "$status" = "ready" ]; then
+              resolved="promote-package"
+            elif [ -n "$export_name" ]; then
+              resolved="$export_name"
+            fi
+          fi
+          echo "QA resolved_artifact='$resolved'"
+          echo "artifact_name=$resolved" >> "$GITHUB_OUTPUT"
+        env:
+          PACKAGE_STATUS: ${{ needs.archive_export.outputs.package_status }}
+          PACKAGE_ARTIFACT: ${{ needs.archive_export.outputs.package_artifact_name }}
+          EXPORT_ARTIFACT: ${{ needs.export.outputs.artifact_name }}
+
       - name: Resolver API Key target (QA)
         env:
           TARGET_KEY: ${{ secrets.APPIAN_QA_API_KEY }}
@@ -330,13 +355,13 @@ jobs:
           fi
         env:
           PACKAGE_STATUS: ${{ needs.archive_export.outputs.package_status }}
-          PACKAGE_ARTIFACT: ${{ needs.archive_export.outputs.package_artifact_name || needs.export.outputs.artifact_name }}
+          PACKAGE_ARTIFACT: ${{ steps.resolve_package_qa.outputs.artifact_name }}
 
       - name: Descargar paquete
         id: download_package
         uses: actions/download-artifact@v4
         with:
-          name: ${{ needs.archive_export.outputs.package_artifact_name || needs.export.outputs.artifact_name }}
+          name: ${{ steps.resolve_package_qa.outputs.artifact_name }}
           path: ${{ runner.temp }}/package
 
       - name: Determinar ruta del paquete
@@ -436,6 +461,31 @@ jobs:
           echo "::add-mask::${TARGET_KEY}"
           echo "APPIAN_API_KEY_TARGET=${TARGET_KEY}" >> "$GITHUB_ENV"
 
+      - name: Resolver artifacto de paquete
+        id: resolve_package_prod
+        run: |
+          set -euo pipefail
+          status="${PACKAGE_STATUS}"
+          archive_name="${PACKAGE_ARTIFACT}"
+          export_name="${EXPORT_ARTIFACT}"
+          echo "PROD package_status=$status"
+          echo "PROD archive_export.package_artifact_name='${archive_name}'"
+          echo "PROD export.artifact_name='${export_name}'"
+          resolved="$archive_name"
+          if [ -z "$resolved" ]; then
+            if [ "$status" = "ready" ]; then
+              resolved="promote-package"
+            elif [ -n "$export_name" ]; then
+              resolved="$export_name"
+            fi
+          fi
+          echo "PROD resolved_artifact='$resolved'"
+          echo "artifact_name=$resolved" >> "$GITHUB_OUTPUT"
+        env:
+          PACKAGE_STATUS: ${{ needs.archive_export.outputs.package_status }}
+          PACKAGE_ARTIFACT: ${{ needs.archive_export.outputs.package_artifact_name }}
+          EXPORT_ARTIFACT: ${{ needs.export.outputs.artifact_name }}
+
       - name: Validar artefacto de export
         run: |
           echo "PACKAGE_STATUS=$PACKAGE_STATUS"
@@ -450,7 +500,7 @@ jobs:
           fi
         env:
           PACKAGE_STATUS: ${{ needs.archive_export.outputs.package_status }}
-          PACKAGE_ARTIFACT: ${{ needs.archive_export.outputs.package_artifact_name || needs.export.outputs.artifact_name }}
+          PACKAGE_ARTIFACT: ${{ steps.resolve_package_prod.outputs.artifact_name }}
 
       - name: Descargar plantilla ICF
         if: ${{ needs.archive_export.outputs.icf_template_status == 'ready' }}
@@ -464,7 +514,7 @@ jobs:
         id: download_package
         uses: actions/download-artifact@v4
         with:
-          name: ${{ needs.archive_export.outputs.package_artifact_name || needs.export.outputs.artifact_name }}
+          name: ${{ steps.resolve_package_prod.outputs.artifact_name }}
           path: ${{ runner.temp }}/package
 
       - name: Determinar ruta del paquete
