@@ -252,6 +252,7 @@ def main() -> int:
       "{{OVERRIDES_PROD_JSON}}": overrides_prod_json,
       "{{SECRETS_SECTION}}": secrets_section,
       "{{OVERRIDES_BY_ENV}}": overrides_by_env,
+      "{{DRY_RUN}}": os.environ.get("DRY_RUN", "false"),
   }
 
   if template_body:
@@ -261,9 +262,10 @@ def main() -> int:
         (
             "## ✅ Acción requerida\n\n"
             "1. Ve a **Settings → Secrets and variables → Actions → Repository secrets**.\n"
-            "2. Edita el secreto `ICF_JSON_OVERRIDES` y agrega/actualiza las claves necesarias para esta promoción.\n"
+            "2. Actualiza los siguientes secretos (uno por entorno):\n"
+            "{{SECRETS_SECTION}}\n"
             "3. Usa la plantilla `provisioning/icf-template.properties` como referencia para los valores obligatorios.\n"
-            "4. Una vez actualizada la configuración, guarda el secreto y continúa con la aprobación en GitHub Actions.\n\n"
+            "4. Una vez actualizadas las credenciales, guarda los secretos y continúa con la aprobación en GitHub Actions.\n\n"
             "### Contexto de la ejecución\n"
             "- Plan seleccionado: `{{PLAN}}`\n"
             "- Dry run: `{{DRY_RUN}}`\n"
@@ -274,10 +276,8 @@ def main() -> int:
             "{{TARGETS_LIST}}\n\n"
             "> Cierra esta issue cuando los overrides estén listos. Si la promoción se repite, se generará una issue nueva.\n\n"
             "{{TEMPLATE_SECTION}}\n\n"
-            "### Plantilla sugerida para `ICF_JSON_OVERRIDES`\n"
-            "```json\n"
-            "{{OVERRIDES_JSON}}\n"
-            "```\n"
+            "### Plantillas sugeridas por entorno\n"
+            "{{OVERRIDES_BY_ENV}}\n"
         ),
         replacements,
     )

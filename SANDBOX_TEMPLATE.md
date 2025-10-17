@@ -38,7 +38,7 @@ Conclusión: al crear un sandbox desde este Template, hay que configurar variabl
 3. Observa:
    - Export: publica `artifact_name`, sube los artefactos y procesa la plantilla ICF mediante `.github/scripts/prepare_icf_template.py`.
    - Promote QA/PROD: consume `artifact_name` y, si corresponde, pide approval por environment.
-   - Se crea una issue automática (basada en `.github/templates/icf-issue.md`) con instrucciones para actualizar `ICF_JSON_OVERRIDES`, adjunta el extracto del template real y entrega un JSON base para copiar en el secreto antes de aprobar la importación.
+  - Se crea una issue automática (basada en `.github/templates/icf-issue.md`) con instrucciones para actualizar los secretos `ICF_JSON_OVERRIDES_QA` y `ICF_JSON_OVERRIDES_PROD`, adjunta el extracto del template real y entrega un JSON base para copiar en cada uno antes de aprobar la importación.
 
 ## Notas de versión del Core
 - Este Sandbox referencia el Core en `@icfbuild` por defecto. Para estabilidad en producción:

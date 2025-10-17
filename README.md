@@ -7,7 +7,7 @@
 - Ambos apuntan a `vrgroup-lab/appian-cicd-core/.github/workflows/{export,promote}.yml@icfbuild` y requieren `vars.APP_UUID`.
 - Cada ejecución descarga el template de customización generado por Appian, lo procesa con `.github/scripts/prepare_icf_template.py` y abre una issue automática (`.github/templates/icf-issue.md`) con:
   - Extracto del `.properties` real exportado.
-  - JSON listo para pegar en el secreto `ICF_JSON_OVERRIDES`.
+- JSON listo para pegar en los secretos `ICF_JSON_OVERRIDES_QA` y `ICF_JSON_OVERRIDES_PROD`.
 - Inputs disponibles:
   - `plan` (`dev-to-qa`, `dev-qa-prod`, `qa-to-prod`).
   - `package_name` (sólo en `deploy-package.yml`).
