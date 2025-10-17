@@ -294,27 +294,7 @@ jobs:
           echo "package_status=${{ needs.archive_export.outputs.package_status }}"
           echo "package_artifact_name=${{ needs.archive_export.outputs.package_artifact_name }}"
           echo "package_file_name=${{ needs.archive_export.outputs.package_file_name }}"
-
-      - name: Resolver artifacto de paquete
-        id: resolve_package_qa
-        run: |
-          set -euo pipefail
-          artifact="${PACKAGE_ARTIFACT}"
-          status="${PACKAGE_STATUS}"
-          if [ -z "$artifact" ]; then
-            if [ "$status" = "ready" ]; then
-              artifact="promote-package"
-            fi
-          fi
-          if [ -z "$artifact" ]; then
-            artifact="${EXPORT_ARTIFACT}"
-          fi
-          echo "Resolved package artifact: '${artifact}' (status=${status}, export='${EXPORT_ARTIFACT}')" >&2
-          echo "artifact_name=$artifact" >> "$GITHUB_OUTPUT"
-        env:
-          PACKAGE_ARTIFACT: ${{ needs.archive_export.outputs.package_artifact_name }}
-          PACKAGE_STATUS: ${{ needs.archive_export.outputs.package_status }}
-          EXPORT_ARTIFACT: ${{ needs.export.outputs.artifact_name }}
+          echo "export_artifact_name=${{ needs.export.outputs.artifact_name }}"
 
       - name: Resolver API Key target (QA)
         env:
@@ -338,6 +318,8 @@ jobs:
 
       - name: Validar artefacto de export
         run: |
+          echo "PACKAGE_STATUS=$PACKAGE_STATUS"
+          echo "PACKAGE_ARTIFACT=$PACKAGE_ARTIFACT"
           if [ "$PACKAGE_STATUS" = "missing" ]; then
             echo "❌ El export no generó paquete para promover." >&2
             exit 1
@@ -348,13 +330,13 @@ jobs:
           fi
         env:
           PACKAGE_STATUS: ${{ needs.archive_export.outputs.package_status }}
-          PACKAGE_ARTIFACT: ${{ steps.resolve_package_qa.outputs.artifact_name }}
+          PACKAGE_ARTIFACT: ${{ needs.archive_export.outputs.package_artifact_name || needs.export.outputs.artifact_name }}
 
       - name: Descargar paquete
         id: download_package
         uses: actions/download-artifact@v4
         with:
-          name: ${{ steps.resolve_package_qa.outputs.artifact_name }}
+          name: ${{ needs.archive_export.outputs.package_artifact_name || needs.export.outputs.artifact_name }}
           path: ${{ runner.temp }}/package
 
       - name: Determinar ruta del paquete
@@ -454,29 +436,10 @@ jobs:
           echo "::add-mask::${TARGET_KEY}"
           echo "APPIAN_API_KEY_TARGET=${TARGET_KEY}" >> "$GITHUB_ENV"
 
-      - name: Resolver artifacto de paquete
-        id: resolve_package_prod
-        run: |
-          set -euo pipefail
-          artifact="${PACKAGE_ARTIFACT}"
-          status="${PACKAGE_STATUS}"
-          if [ -z "$artifact" ]; then
-            if [ "$status" = "ready" ]; then
-              artifact="promote-package"
-            fi
-          fi
-          if [ -z "$artifact" ]; then
-            artifact="${EXPORT_ARTIFACT}"
-          fi
-          echo "Resolved package artifact: '${artifact}' (status=${status}, export='${EXPORT_ARTIFACT}')" >&2
-          echo "artifact_name=$artifact" >> "$GITHUB_OUTPUT"
-        env:
-          PACKAGE_ARTIFACT: ${{ needs.archive_export.outputs.package_artifact_name }}
-          PACKAGE_STATUS: ${{ needs.archive_export.outputs.package_status }}
-          EXPORT_ARTIFACT: ${{ needs.export.outputs.artifact_name }}
-
       - name: Validar artefacto de export
         run: |
+          echo "PACKAGE_STATUS=$PACKAGE_STATUS"
+          echo "PACKAGE_ARTIFACT=$PACKAGE_ARTIFACT"
           if [ "$PACKAGE_STATUS" = "missing" ]; then
             echo "❌ El export no generó paquete para promover." >&2
             exit 1
@@ -487,7 +450,7 @@ jobs:
           fi
         env:
           PACKAGE_STATUS: ${{ needs.archive_export.outputs.package_status }}
-          PACKAGE_ARTIFACT: ${{ steps.resolve_package_prod.outputs.artifact_name }}
+          PACKAGE_ARTIFACT: ${{ needs.archive_export.outputs.package_artifact_name || needs.export.outputs.artifact_name }}
 
       - name: Descargar plantilla ICF
         if: ${{ needs.archive_export.outputs.icf_template_status == 'ready' }}
@@ -501,7 +464,7 @@ jobs:
         id: download_package
         uses: actions/download-artifact@v4
         with:
-          name: ${{ steps.resolve_package_prod.outputs.artifact_name }}
+          name: ${{ needs.archive_export.outputs.package_artifact_name || needs.export.outputs.artifact_name }}
           path: ${{ runner.temp }}/package
 
       - name: Determinar ruta del paquete
