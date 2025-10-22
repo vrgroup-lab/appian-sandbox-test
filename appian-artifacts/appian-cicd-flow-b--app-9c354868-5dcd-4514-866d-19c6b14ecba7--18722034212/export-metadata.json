@@ -1,0 +1,9 @@
+{
+  "artifact_name": "appian-cicd-flow-b--app-9c354868-5dcd-4514-866d-19c6b14ecba7--18722034212",
+  "artifact_path": "appian-artifacts/appian-cicd-flow-b--app-9c354868-5dcd-4514-866d-19c6b14ecba7--18722034212/app-9c354868-5dcd-4514-866d-19c6b14ecba7-9c354868-5dcd-4514-866d-19c6b14ecba7.zip",
+  "artifact_dir": "appian-artifacts/appian-cicd-flow-b--app-9c354868-5dcd-4514-866d-19c6b14ecba7--18722034212",
+  "manifest_path": "appian-artifacts/appian-cicd-flow-b--app-9c354868-5dcd-4514-866d-19c6b14ecba7--18722034212/export-manifest.json",
+  "raw_response_path": "appian-artifacts/appian-cicd-flow-b--app-9c354868-5dcd-4514-866d-19c6b14ecba7--18722034212/export-response.json",
+  "deployment_uuid": "31ba760b-75a2-45b6-aa34-0c3ecf1e3624",
+  "deployment_status": "COMPLETED"
+}
