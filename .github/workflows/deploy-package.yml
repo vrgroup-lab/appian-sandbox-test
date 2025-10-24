@@ -209,8 +209,10 @@ jobs:
           pkg="$(find "$dir" -type f -name '*.zip' | head -n 1 || true)"
           if [ -n "$pkg" ]; then
             echo "package_path=$pkg" >> "$GITHUB_OUTPUT"
-            echo "package_file_name=$(basename "$pkg")" >> "$GITHUB_OUTPUT"
-            echo "package_artifact_name=promote-package" >> "$GITHUB_OUTPUT"
+            file_name="$(basename "$pkg")"
+            base_name="${file_name%.*}"
+            echo "package_file_name=$file_name" >> "$GITHUB_OUTPUT"
+            echo "package_artifact_name=$base_name" >> "$GITHUB_OUTPUT"
             echo "package_status=ready" >> "$GITHUB_OUTPUT"
             echo "Paquete encontrado en: $pkg"
           elif [ -n "$EXPORT_ARTIFACT_NAME" ]; then
@@ -309,15 +311,15 @@ jobs:
         run: |
           set -euo pipefail
           status="${PACKAGE_STATUS}"
-          archive_name="${PACKAGE_ARTIFACT}"
+          artifact_base="${PACKAGE_ARTIFACT}"
           export_name="${EXPORT_ARTIFACT}"
-          resolved="$archive_name"
-          if [ -z "$resolved" ]; then
-            if [ "$status" = "ready" ]; then
-              resolved="promote-package"
-            elif [ -n "$export_name" ]; then
-              resolved="$export_name"
-            fi
+          resolved=""
+          if [ "$status" = "ready" ]; then
+            resolved="promote-package"
+          elif [ -n "$artifact_base" ]; then
+            resolved="$artifact_base"
+          elif [ -n "$export_name" ]; then
+            resolved="$export_name"
           fi
           echo "artifact_name=$resolved" >> "$GITHUB_OUTPUT"
         env:
@@ -480,15 +482,15 @@ jobs:
         run: |
           set -euo pipefail
           status="${PACKAGE_STATUS}"
-          archive_name="${PACKAGE_ARTIFACT}"
+          artifact_base="${PACKAGE_ARTIFACT}"
           export_name="${EXPORT_ARTIFACT}"
-          resolved="$archive_name"
-          if [ -z "$resolved" ]; then
-            if [ "$status" = "ready" ]; then
-              resolved="promote-package"
-            elif [ -n "$export_name" ]; then
-              resolved="$export_name"
-            fi
+          resolved=""
+          if [ "$status" = "ready" ]; then
+            resolved="promote-package"
+          elif [ -n "$artifact_base" ]; then
+            resolved="$artifact_base"
+          elif [ -n "$export_name" ]; then
+            resolved="$export_name"
           fi
           echo "artifact_name=$resolved" >> "$GITHUB_OUTPUT"
         env:
