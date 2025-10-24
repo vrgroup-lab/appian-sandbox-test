@@ -35,7 +35,7 @@ jobs:
 
   export:
     needs: validate
-    uses: vrgroup-lab/appian-cicd-core/.github/workflows/export.yml@icfbuild
+    uses: vrgroup-lab/appian-cicd-core/.github/workflows/export.yml@sql
     secrets: inherit
     with:
       # Si el plan es qa-to-prod, exportamos desde QA; si no, desde Dev
@@ -346,7 +346,7 @@ jobs:
 
       - name: Construir ICF efímero
         id: build_icf
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@icfbuild
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@sql
         env:
           ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES_QA }}
         with:
@@ -355,7 +355,7 @@ jobs:
           out_path: ${{ runner.temp }}/icf-qa.properties
 
       - name: Promover aplicación
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@icfbuild
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@sql
         with:
           source_env: dev
           target_env: qa
@@ -436,7 +436,7 @@ jobs:
 
       - name: Construir ICF efímero
         id: build_icf
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@icfbuild
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@sql
         env:
           ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES_PROD }}
         with:
@@ -444,7 +444,7 @@ jobs:
           env: prod
           out_path: ${{ runner.temp }}/icf-prod.properties
       - name: Promover aplicación
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@icfbuild
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@sql
         with:
           source_env: dev
           target_env: prod
@@ -525,7 +525,7 @@ jobs:
 
       - name: Construir ICF efímero
         id: build_icf
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@icfbuild
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@sql
         env:
           ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES_PROD }}
         with:
@@ -534,7 +534,7 @@ jobs:
           out_path: ${{ runner.temp }}/icf-prod.properties
 
       - name: Promover aplicación
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@icfbuild
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@sql
         with:
           source_env: qa
           target_env: prod

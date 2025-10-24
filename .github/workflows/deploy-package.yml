@@ -32,7 +32,7 @@ jobs:
 
   export:
     needs: validate
-    uses: vrgroup-lab/appian-cicd-core/.github/workflows/export.yml@icfbuild
+    uses: vrgroup-lab/appian-cicd-core/.github/workflows/export.yml@sql
     secrets: inherit
     with:
       env: dev
@@ -390,7 +390,7 @@ jobs:
       - name: Construir ICF efímero
         if: ${{ needs.archive_export.outputs.icf_template_status == 'ready' }}
         id: build_icf
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@icfbuild
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@sql
         env:
           ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES_QA }}
         with:
@@ -419,7 +419,7 @@ jobs:
 
       - name: Promover paquete
         if: ${{ needs.archive_export.outputs.icf_template_status == 'ready' }}
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@icfbuild
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@sql
         with:
           source_env: dev
           target_env: qa
@@ -430,7 +430,7 @@ jobs:
 
       - name: Promover paquete sin ICF
         if: ${{ needs.archive_export.outputs.icf_template_status != 'ready' }}
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@icfbuild
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@sql
         with:
           source_env: dev
           target_env: qa
@@ -537,7 +537,7 @@ jobs:
       - name: Construir ICF efímero
         if: ${{ needs.archive_export.outputs.icf_template_status == 'ready' }}
         id: build_icf
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@icfbuild
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@sql
         env:
           ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES_PROD }}
         with:
@@ -566,7 +566,7 @@ jobs:
 
       - name: Promover paquete
         if: ${{ needs.archive_export.outputs.icf_template_status == 'ready' }}
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@icfbuild
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@sql
         with:
           source_env: dev
           target_env: prod
@@ -577,7 +577,7 @@ jobs:
 
       - name: Promover paquete sin ICF
         if: ${{ needs.archive_export.outputs.icf_template_status != 'ready' }}
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@icfbuild
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@sql
         with:
           source_env: dev
           target_env: prod

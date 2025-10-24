@@ -41,5 +41,5 @@ Conclusión: al crear un sandbox desde este Template, hay que configurar variabl
   - Se crea una issue automática (basada en `.github/templates/icf-issue.md`) con instrucciones para actualizar los secretos `ICF_JSON_OVERRIDES_QA` y `ICF_JSON_OVERRIDES_PROD`, adjunta el extracto del template real y entrega un JSON base para copiar en cada uno antes de aprobar la importación.
 
 ## Notas de versión del Core
-- Este Sandbox referencia el Core en `@icfbuild` por defecto. Para estabilidad en producción:
+- Este Sandbox referencia el Core en `@sql` por defecto. Para estabilidad en producción:
   - Pinea a un tag (ej. `@v0.1.0`) o a un SHA específico en `/.github/workflows/deploy.yml`.
