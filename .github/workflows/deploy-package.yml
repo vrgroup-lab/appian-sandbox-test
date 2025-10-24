@@ -391,7 +391,7 @@ jobs:
         id: prepare_db_scripts
         uses: ./.github/actions/prepare-db-scripts
         with:
-          artifact-name: ${{ steps.resolve_package_qa.outputs.artifact_name }}
+          artifact-name: ${{ needs.archive_export.outputs.package_artifact_name }}
 
       - name: Construir ICF efímero
         if: ${{ needs.archive_export.outputs.icf_template_status == 'ready' }}
@@ -550,7 +550,7 @@ jobs:
         id: prepare_db_scripts
         uses: ./.github/actions/prepare-db-scripts
         with:
-          artifact-name: ${{ steps.resolve_package_prod.outputs.artifact_name }}
+          artifact-name: ${{ needs.archive_export.outputs.package_artifact_name }}
 
       - name: Construir ICF efímero
         if: ${{ needs.archive_export.outputs.icf_template_status == 'ready' }}

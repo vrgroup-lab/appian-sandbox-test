@@ -38,7 +38,7 @@ runs:
       id: download_db_scripts
       uses: actions/download-artifact@v4
       with:
-        name: ${{ format('{0}-db-scripts', inputs.artifact-name) }}
+        name: ${{ inputs.artifact-name }}-db-scripts
         path: ${{ steps.setup.outputs.base_dir }}/db-scripts
         merge-multiple: true
       continue-on-error: true
@@ -48,7 +48,7 @@ runs:
       id: download_export_meta
       uses: actions/download-artifact@v4
       with:
-        name: ${{ format('{0}-meta', inputs.artifact-name) }}
+        name: ${{ inputs.artifact-name }}-meta
         path: ${{ steps.setup.outputs.base_dir }}/export-meta
       continue-on-error: true
 
