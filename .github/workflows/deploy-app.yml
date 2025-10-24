@@ -344,6 +344,12 @@ jobs:
           fi
           echo "package_path=$pkg" >> "$GITHUB_OUTPUT"
 
+      - name: Preparar scripts de base de datos
+        id: prepare_db_scripts
+        uses: ./.github/actions/prepare-db-scripts
+        with:
+          artifact-name: ${{ needs.archive_export.outputs.package_artifact_name }}
+
       - name: Construir ICF efímero
         id: build_icf
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@sql
@@ -361,6 +367,9 @@ jobs:
           target_env: qa
           package_path: ${{ steps.package_path.outputs.package_path }}
           icf_path: ${{ steps.build_icf.outputs.icf_path }}
+          db_scripts_path: ${{ steps.prepare_db_scripts.outputs.db_scripts_path != '' && steps.prepare_db_scripts.outputs.db_scripts_path || fromJSON('null') }}
+          data_source: ${{ steps.prepare_db_scripts.outputs.data_source != '' && steps.prepare_db_scripts.outputs.data_source || fromJSON('null') }}
+          db_scripts_manifest: ${{ steps.prepare_db_scripts.outputs.db_scripts_manifest != '' && steps.prepare_db_scripts.outputs.db_scripts_manifest || fromJSON('null') }}
         env:
           APPIAN_API_KEY_TARGET: ${{ env.APPIAN_API_KEY_TARGET }}
 
@@ -434,6 +443,12 @@ jobs:
           fi
           echo "package_path=$pkg" >> "$GITHUB_OUTPUT"
 
+      - name: Preparar scripts de base de datos
+        id: prepare_db_scripts
+        uses: ./.github/actions/prepare-db-scripts
+        with:
+          artifact-name: ${{ needs.archive_export.outputs.package_artifact_name }}
+
       - name: Construir ICF efímero
         id: build_icf
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@sql
@@ -450,6 +465,9 @@ jobs:
           target_env: prod
           package_path: ${{ steps.package_path.outputs.package_path }}
           icf_path: ${{ steps.build_icf.outputs.icf_path }}
+          db_scripts_path: ${{ steps.prepare_db_scripts.outputs.db_scripts_path != '' && steps.prepare_db_scripts.outputs.db_scripts_path || fromJSON('null') }}
+          data_source: ${{ steps.prepare_db_scripts.outputs.data_source != '' && steps.prepare_db_scripts.outputs.data_source || fromJSON('null') }}
+          db_scripts_manifest: ${{ steps.prepare_db_scripts.outputs.db_scripts_manifest != '' && steps.prepare_db_scripts.outputs.db_scripts_manifest || fromJSON('null') }}
         env:
           APPIAN_API_KEY_TARGET: ${{ env.APPIAN_API_KEY_TARGET }}
 
@@ -523,6 +541,12 @@ jobs:
           fi
           echo "package_path=$pkg" >> "$GITHUB_OUTPUT"
 
+      - name: Preparar scripts de base de datos
+        id: prepare_db_scripts
+        uses: ./.github/actions/prepare-db-scripts
+        with:
+          artifact-name: ${{ needs.archive_export.outputs.package_artifact_name }}
+
       - name: Construir ICF efímero
         id: build_icf
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@sql
@@ -540,6 +564,9 @@ jobs:
           target_env: prod
           package_path: ${{ steps.package_path.outputs.package_path }}
           icf_path: ${{ steps.build_icf.outputs.icf_path }}
+          db_scripts_path: ${{ steps.prepare_db_scripts.outputs.db_scripts_path != '' && steps.prepare_db_scripts.outputs.db_scripts_path || fromJSON('null') }}
+          data_source: ${{ steps.prepare_db_scripts.outputs.data_source != '' && steps.prepare_db_scripts.outputs.data_source || fromJSON('null') }}
+          db_scripts_manifest: ${{ steps.prepare_db_scripts.outputs.db_scripts_manifest != '' && steps.prepare_db_scripts.outputs.db_scripts_manifest || fromJSON('null') }}
         env:
           APPIAN_API_KEY_TARGET: ${{ env.APPIAN_API_KEY_TARGET }}
 
