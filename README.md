@@ -1,22 +1,16 @@
 # 📦 CI/CD Pipeline – Appian - GitHub Actions
 
-> Estado: este repo ahora actúa como Sandbox de una aplicación Appian y consume workflows reutilizables del repo Core (`bice-vida/appian-cicd-core@develop`). El material del antiguo monorepo fue archivado en `legacy_monorepo/`.
+> Estado: este repo ahora actúa como Sandbox de una aplicación Appian y consume workflows reutilizables del repo Core (`vrgroup-lab/appian-cicd-core@sql`). El material del antiguo monorepo fue archivado en `legacy_monorepo/`.
 
-## Uso rápido (wrapper hacia Core)
-- Workflow sandbox: `/.github/workflows/deploy.yml`
-- Este wrapper ya apunta a `bice-vida/appian-cicd-core/.github/workflows/{export,promote}.yml@develop`.
-- Requiere variable de repositorio: `APP_UUID` (UUID de la aplicación Appian para este Sandbox).
-- Ejecuta manualmente el workflow “Deploy (wrapper)” con `dry_run=true` para validar la conexión Core ⇄ Sandbox. Verás:
-  - Export: crea un ZIP simulado y expone `artifact_path`.
-  - Promote: consume ese ZIP y simula la importación en QA.
-
-### Inputs del wrapper
-- `deploy_kind`: Objeto de promoción (`package` | `app`).
-- `package_name`: Nombre del paquete (opcional; requerido si `deploy_kind=package`).
-- `plan`: Plan de promoción (`dev-to-qa`, `dev-to-prod`, `dev-qa-prod`).
-- `dry_run`: Evita llamadas reales y usa artefactos simulados.
-
-El `app_uuid` no se solicita; se toma de `vars.APP_UUID` del repositorio.
+## Uso rápido (wrappers hacia el Core)
+- Workflows: `deploy-app.yml` (aplicaciones) y `deploy-package.yml` (paquetes).
+- Ambos apuntan a `vrgroup-lab/appian-cicd-core/.github/workflows/{export,promote}.yml@sql` y requieren `vars.APP_UUID`.
+- Cada ejecución descarga el template de customización generado por Appian, lo procesa con `.github/scripts/prepare_icf_template.py` y abre una issue automática (`.github/templates/icf-issue.md`) con:
+  - Extracto del `.properties` real exportado.
+- JSON listo para pegar en los secretos `ICF_JSON_OVERRIDES_QA` y `ICF_JSON_OVERRIDES_PROD`.
+- Inputs disponibles:
+  - `plan` (`dev-to-qa`, `dev-qa-prod`, `qa-to-prod`).
+  - `package_name` (sólo en `deploy-package.yml`).
 
 Consulta `SANDBOX_TEMPLATE.md` para convertir este repo en template y los pasos de configuración al crear sandboxes nuevos.
 
