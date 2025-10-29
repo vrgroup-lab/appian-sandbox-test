@@ -277,21 +277,33 @@ jobs:
         run: python3 .github/scripts/create_icf_issue.py
 
   promote_qa:
-    if: ${{ inputs.plan == 'dev-to-qa' || inputs.plan == 'dev-qa-prod' }}
     needs: [export, archive_export]
     runs-on: ubuntu-latest
     environment: qa
+    env:
+      PROMOTE_QA_ENABLED: ${{ inputs.plan == 'dev-to-qa' || inputs.plan == 'dev-qa-prod' }}
+    outputs:
+      status: ${{ steps.record_status.outputs.status }}
     steps:
+      - name: Promoción QA no aplica para el plan
+        if: ${{ env.PROMOTE_QA_ENABLED != 'true' }}
+        run: echo "Promoción QA no aplica para el plan '${PLAN}'."
+        env:
+          PLAN: ${{ inputs.plan }}
+
       - name: Checkout repositorio
+        if: ${{ env.PROMOTE_QA_ENABLED == 'true' }}
         uses: actions/checkout@v4
 
       - name: Mostrar datos de export
+        if: ${{ env.PROMOTE_QA_ENABLED == 'true' }}
         run: |
           echo "package_status=${{ needs.archive_export.outputs.package_status }}"
           echo "package_artifact_name=${{ needs.archive_export.outputs.package_artifact_name }}"
           echo "package_file_name=${{ needs.archive_export.outputs.package_file_name }}"
 
       - name: Resolver artifacto de paquete
+        if: ${{ env.PROMOTE_QA_ENABLED == 'true' }}
         id: resolve_package_qa
         run: |
           set -euo pipefail
@@ -313,6 +325,7 @@ jobs:
           EXPORT_ARTIFACT: ${{ needs.export.outputs.artifact_name }}
 
       - name: Resolver API Key target (QA)
+        if: ${{ env.PROMOTE_QA_ENABLED == 'true' }}
         env:
           TARGET_KEY: ${{ secrets.APPIAN_QA_API_KEY }}
         run: |
@@ -325,6 +338,7 @@ jobs:
           echo "APPIAN_API_KEY_TARGET=${TARGET_KEY}" >> "$GITHUB_ENV"
 
       - name: Validar artefacto de export
+        if: ${{ env.PROMOTE_QA_ENABLED == 'true' }}
         run: |
           if [ -z "$PACKAGE_ARTIFACT" ]; then
             echo "❌ No se encontró paquete exportado para promover." >&2
@@ -334,7 +348,7 @@ jobs:
           PACKAGE_ARTIFACT: ${{ steps.resolve_package_qa.outputs.artifact_name }}
 
       - name: Descargar plantilla ICF
-        if: ${{ needs.archive_export.outputs.icf_template_path != '' }}
+        if: ${{ env.PROMOTE_QA_ENABLED == 'true' && needs.archive_export.outputs.icf_template_path != '' }}
         id: download_icf_template_qa
         uses: actions/download-artifact@v4
         with:
@@ -342,6 +356,7 @@ jobs:
           path: ${{ runner.temp }}/icf-template
 
       - name: Descargar paquete/app
+        if: ${{ env.PROMOTE_QA_ENABLED == 'true' }}
         id: download_package
         uses: actions/download-artifact@v4
         with:
@@ -349,6 +364,7 @@ jobs:
           path: ${{ runner.temp }}/artifact
 
       - name: Determinar ruta del paquete/app
+        if: ${{ env.PROMOTE_QA_ENABLED == 'true' }}
         id: package_path
         env:
           DOWNLOAD_DIR: ${{ steps.download_package.outputs.download-path }}
@@ -370,12 +386,14 @@ jobs:
           echo "package_path=$pkg" >> "$GITHUB_OUTPUT"
 
       - name: Preparar scripts de base de datos
+        if: ${{ env.PROMOTE_QA_ENABLED == 'true' }}
         id: prepare_db_scripts
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-prepare-db-scripts@sql
         with:
           artifact-name: ${{ needs.export.outputs.artifact_name }}
 
       - name: Construir ICF efímero
+        if: ${{ env.PROMOTE_QA_ENABLED == 'true' }}
         id: build_icf
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@sql
         env:
@@ -386,6 +404,7 @@ jobs:
           out_path: ${{ runner.temp }}/icf-qa.properties
 
       - name: Promover aplicación
+        if: ${{ env.PROMOTE_QA_ENABLED == 'true' }}
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@sql
         with:
           source_env: dev
@@ -400,18 +419,43 @@ jobs:
 
       - name: Cleanup ICF
         if: ${{ always() }}
-        run: shred -u ${{ steps.build_icf.outputs.icf_path }} || true
+        run: |
+          if [ "${PROMOTE_QA_ENABLED}" != "true" ]; then
+            exit 0
+          fi
+          shred -u ${{ steps.build_icf.outputs.icf_path }} || true
+
+      - name: Registrar estado de promoción QA
+        id: record_status
+        if: ${{ always() }}
+        run: |
+          if [ "${PROMOTE_QA_ENABLED}" = "true" ]; then
+            echo "status=${{ job.status }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=skipped" >> "$GITHUB_OUTPUT"
+          fi
 
   promote_prod_after_qa:
-    if: ${{ inputs.plan == 'dev-qa-prod' }}
     needs: [promote_qa, archive_export, export]
     runs-on: ubuntu-latest
     environment: prod
+    env:
+      PROMOTE_QA_PROD_ENABLED: ${{ inputs.plan == 'dev-qa-prod' }}
+    outputs:
+      status: ${{ steps.record_devqa_status.outputs.status }}
     steps:
+      - name: Promoción QA → Prod no aplica
+        if: ${{ env.PROMOTE_QA_PROD_ENABLED != 'true' }}
+        run: echo "Promoción QA → Prod no aplica para el plan '${PLAN}'."
+        env:
+          PLAN: ${{ inputs.plan }}
+
       - name: Checkout repositorio
+        if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' }}
         uses: actions/checkout@v4
 
       - name: Resolver API Key target (Prod)
+        if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' }}
         env:
           TARGET_KEY: ${{ secrets.APPIAN_PROD_API_KEY }}
         run: |
@@ -424,6 +468,7 @@ jobs:
           echo "APPIAN_API_KEY_TARGET=${TARGET_KEY}" >> "$GITHUB_ENV"
 
       - name: Resolver artifacto de paquete
+        if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' }}
         id: resolve_package_devprod
         run: |
           set -euo pipefail
@@ -445,7 +490,7 @@ jobs:
           EXPORT_ARTIFACT: ${{ needs.export.outputs.artifact_name }}
 
       - name: Descargar plantilla ICF
-        if: ${{ needs.archive_export.outputs.icf_template_path != '' }}
+        if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' && needs.archive_export.outputs.icf_template_path != '' }}
         id: download_icf_template_devprod
         uses: actions/download-artifact@v4
         with:
@@ -453,6 +498,7 @@ jobs:
           path: ${{ runner.temp }}/icf-template
 
       - name: Validar artefacto de export
+        if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' }}
         run: |
           if [ -z "$PACKAGE_ARTIFACT" ]; then
             echo "❌ No se encontró paquete exportado para promover." >&2
@@ -462,6 +508,7 @@ jobs:
           PACKAGE_ARTIFACT: ${{ steps.resolve_package_devprod.outputs.artifact_name }}
 
       - name: Descargar paquete/app
+        if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' }}
         id: download_package
         uses: actions/download-artifact@v4
         with:
@@ -469,6 +516,7 @@ jobs:
           path: ${{ runner.temp }}/artifact
 
       - name: Determinar ruta del paquete/app
+        if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' }}
         id: package_path
         env:
           DOWNLOAD_DIR: ${{ steps.download_package.outputs.download-path }}
@@ -490,12 +538,14 @@ jobs:
           echo "package_path=$pkg" >> "$GITHUB_OUTPUT"
 
       - name: Preparar scripts de base de datos
+        if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' }}
         id: prepare_db_scripts
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-prepare-db-scripts@sql
         with:
           artifact-name: ${{ needs.export.outputs.artifact_name }}
 
       - name: Construir ICF efímero
+        if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' }}
         id: build_icf
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@sql
         env:
@@ -505,6 +555,7 @@ jobs:
           env: prod
           out_path: ${{ runner.temp }}/icf-prod.properties
       - name: Promover aplicación
+        if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' }}
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@sql
         with:
           source_env: dev
@@ -519,18 +570,43 @@ jobs:
 
       - name: Cleanup ICF
         if: ${{ always() }}
-        run: shred -u ${{ steps.build_icf.outputs.icf_path }} || true
+        run: |
+          if [ "${PROMOTE_QA_PROD_ENABLED}" != "true" ]; then
+            exit 0
+          fi
+          shred -u ${{ steps.build_icf.outputs.icf_path }} || true
+
+      - name: Registrar estado promoción QA → Prod
+        id: record_devqa_status
+        if: ${{ always() }}
+        run: |
+          if [ "${PROMOTE_QA_PROD_ENABLED}" = "true" ]; then
+            echo "status=${{ job.status }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=skipped" >> "$GITHUB_OUTPUT"
+          fi
 
   promote_prod_from_qa:
-    if: ${{ inputs.plan == 'qa-to-prod' }}
     needs: [export, archive_export]
     runs-on: ubuntu-latest
     environment: prod
+    env:
+      PROMOTE_QA_ONLY_ENABLED: ${{ inputs.plan == 'qa-to-prod' }}
+    outputs:
+      status: ${{ steps.record_qaprod_status.outputs.status }}
     steps:
+      - name: Promoción QA → Prod directa no aplica
+        if: ${{ env.PROMOTE_QA_ONLY_ENABLED != 'true' }}
+        run: echo "Promoción QA → Prod (plan qa-to-prod) no aplica para '${PLAN}'."
+        env:
+          PLAN: ${{ inputs.plan }}
+
       - name: Checkout repositorio
+        if: ${{ env.PROMOTE_QA_ONLY_ENABLED == 'true' }}
         uses: actions/checkout@v4
 
       - name: Resolver API Key target (Prod)
+        if: ${{ env.PROMOTE_QA_ONLY_ENABLED == 'true' }}
         env:
           TARGET_KEY: ${{ secrets.APPIAN_PROD_API_KEY }}
         run: |
@@ -543,6 +619,7 @@ jobs:
           echo "APPIAN_API_KEY_TARGET=${TARGET_KEY}" >> "$GITHUB_ENV"
 
       - name: Resolver artifacto de paquete
+        if: ${{ env.PROMOTE_QA_ONLY_ENABLED == 'true' }}
         id: resolve_package_qaprod
         run: |
           set -euo pipefail
@@ -564,6 +641,7 @@ jobs:
           EXPORT_ARTIFACT: ${{ needs.export.outputs.artifact_name }}
 
       - name: Validar artefacto de export
+        if: ${{ env.PROMOTE_QA_ONLY_ENABLED == 'true' }}
         run: |
           if [ -z "$PACKAGE_ARTIFACT" ]; then
             echo "❌ No se encontró paquete exportado para promover." >&2
@@ -573,7 +651,7 @@ jobs:
           PACKAGE_ARTIFACT: ${{ steps.resolve_package_qaprod.outputs.artifact_name }}
 
       - name: Descargar plantilla ICF
-        if: ${{ needs.archive_export.outputs.icf_template_path != '' }}
+        if: ${{ env.PROMOTE_QA_ONLY_ENABLED == 'true' && needs.archive_export.outputs.icf_template_path != '' }}
         id: download_icf_template_qaprod
         uses: actions/download-artifact@v4
         with:
@@ -581,6 +659,7 @@ jobs:
           path: ${{ runner.temp }}/icf-template
 
       - name: Descargar paquete/app
+        if: ${{ env.PROMOTE_QA_ONLY_ENABLED == 'true' }}
         id: download_package
         uses: actions/download-artifact@v4
         with:
@@ -588,6 +667,7 @@ jobs:
           path: ${{ runner.temp }}/artifact
 
       - name: Determinar ruta del paquete/app
+        if: ${{ env.PROMOTE_QA_ONLY_ENABLED == 'true' }}
         id: package_path
         env:
           DOWNLOAD_DIR: ${{ steps.download_package.outputs.download-path }}
@@ -609,12 +689,14 @@ jobs:
           echo "package_path=$pkg" >> "$GITHUB_OUTPUT"
 
       - name: Preparar scripts de base de datos
+        if: ${{ env.PROMOTE_QA_ONLY_ENABLED == 'true' }}
         id: prepare_db_scripts
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-prepare-db-scripts@sql
         with:
           artifact-name: ${{ needs.export.outputs.artifact_name }}
 
       - name: Construir ICF efímero
+        if: ${{ env.PROMOTE_QA_ONLY_ENABLED == 'true' }}
         id: build_icf
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@sql
         env:
@@ -625,6 +707,7 @@ jobs:
           out_path: ${{ runner.temp }}/icf-prod.properties
 
       - name: Promover aplicación
+        if: ${{ env.PROMOTE_QA_ONLY_ENABLED == 'true' }}
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@sql
         with:
           source_env: qa
@@ -639,7 +722,21 @@ jobs:
 
       - name: Cleanup ICF
         if: ${{ always() }}
-        run: shred -u ${{ steps.build_icf.outputs.icf_path }} || true
+        run: |
+          if [ "${PROMOTE_QA_ONLY_ENABLED}" != "true" ]; then
+            exit 0
+          fi
+          shred -u ${{ steps.build_icf.outputs.icf_path }} || true
+
+      - name: Registrar estado promoción QA → Prod directa
+        id: record_qaprod_status
+        if: ${{ always() }}
+        run: |
+          if [ "${PROMOTE_QA_ONLY_ENABLED}" = "true" ]; then
+            echo "status=${{ job.status }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=skipped" >> "$GITHUB_OUTPUT"
+          fi
 
   publish_release:
     needs: [export, archive_export, promote_qa, promote_prod_after_qa, promote_prod_from_qa]
@@ -669,7 +766,7 @@ jobs:
           PACKAGE_STATUS: ${{ needs.archive_export.outputs.package_status }}
           ICF_TEMPLATE_STATUS: ${{ needs.archive_export.outputs.icf_template_status }}
           ICF_TEMPLATE_FILE: ${{ needs.archive_export.outputs.icf_template_file }}
-          PROMOTE_QA_RESULT: ${{ needs.promote_qa.result }}
-          PROMOTE_PROD_AFTER_QA_RESULT: ${{ needs.promote_prod_after_qa.result }}
-          PROMOTE_PROD_FROM_QA_RESULT: ${{ needs.promote_prod_from_qa.result }}
+          PROMOTE_QA_RESULT: ${{ needs.promote_qa.outputs.status }}
+          PROMOTE_PROD_AFTER_QA_RESULT: ${{ needs.promote_prod_after_qa.outputs.status }}
+          PROMOTE_PROD_FROM_QA_RESULT: ${{ needs.promote_prod_from_qa.outputs.status }}
         run: python3 .github/scripts/create_release.py
