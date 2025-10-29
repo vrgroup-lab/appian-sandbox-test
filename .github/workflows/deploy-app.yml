@@ -11,10 +11,10 @@ on:
 
 permissions:
   actions: write
-  contents: write      # o write si lo necesitas
-  pull-requests: write  # solo si el flujo crea PRs
+  contents: write
+  pull-requests: write
   id-token: write
-  issues: write 
+  issues: write
 
 jobs:
   validate:
@@ -369,7 +369,7 @@ jobs:
 
       - name: Preparar scripts de base de datos
         id: prepare_db_scripts
-        uses: ./.github/actions/prepare-db-scripts
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-prepare-db-scripts@sql
         with:
           artifact-name: ${{ needs.export.outputs.artifact_name }}
 
@@ -489,7 +489,7 @@ jobs:
 
       - name: Preparar scripts de base de datos
         id: prepare_db_scripts
-        uses: ./.github/actions/prepare-db-scripts
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-prepare-db-scripts@sql
         with:
           artifact-name: ${{ needs.export.outputs.artifact_name }}
 
@@ -608,7 +608,7 @@ jobs:
 
       - name: Preparar scripts de base de datos
         id: prepare_db_scripts
-        uses: ./.github/actions/prepare-db-scripts
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-prepare-db-scripts@sql
         with:
           artifact-name: ${{ needs.export.outputs.artifact_name }}
 

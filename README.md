@@ -12,9 +12,6 @@
   - `plan` (`dev-to-qa`, `dev-qa-prod`, `qa-to-prod`).
   - `package_name` (sólo en `deploy-package.yml`).
 
-Consulta `SANDBOX_TEMPLATE.md` para convertir este repo en template y los pasos de configuración al crear sandboxes nuevos.
-
-
 > **Versión:** 2025-07-01 · *Owner: M. Tombolini (VR Group)*
 
 ---
