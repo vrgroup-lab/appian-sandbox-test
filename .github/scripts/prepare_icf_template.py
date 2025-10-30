@@ -93,7 +93,7 @@ def main() -> int:
     fallback_template = os.environ.get("FALLBACK_TEMPLATE_PATH", "")
 
     if not artifact_dir:
-        log("::warning::ARTIFACT_DIR no definido; no se buscará plantilla.")
+        log("::notice::ARTIFACT_DIR no definido; no se buscará plantilla.")
         artifact_root = None
     else:
         artifact_root = Path(artifact_dir)
@@ -138,7 +138,7 @@ def main() -> int:
         log(f"Plantilla encontrada: {chosen}")
         status = "ready"
     else:
-        log("::warning::No se encontró plantilla en los artefactos descargados.")
+        log("::notice::No se encontró plantilla en los artefactos descargados.")
 
     content: str | None = None
     source_path: str | None = None
@@ -147,7 +147,7 @@ def main() -> int:
             content = chosen.read_text(encoding="utf-8")
             source_path = str(chosen)
         except OSError as exc:
-            log(f"::warning::No se pudo leer la plantilla {chosen}: {exc}")
+            log(f"::notice::No se pudo leer la plantilla {chosen}: {exc}")
 
     if content is None and fallback_template:
         fallback = Path(fallback_template)
@@ -159,7 +159,7 @@ def main() -> int:
                 status = "fallback"
 
     if content is None:
-        log("::warning::No se obtuvo contenido de plantilla ICF.")
+        log("::notice::No se obtuvo contenido de plantilla ICF.")
         emit_output("icf_template_status", status)
         return 0
 
@@ -187,8 +187,10 @@ def main() -> int:
         if status == "ready":
             status = "empty"
         log(
-            "::warning::El archivo seleccionado"
-            f" ({source_path}) no contiene claves 'key=value'; se omitirá."
+            "::notice::La plantilla analizada"
+            f" ({source_path}) no contiene pares clave=valor."
+            " No se generarán overrides automáticos; completa la plantilla"
+            " con entradas 'clave=valor' si deseas sugerir overrides."
         )
 
     encoded_content = base64.b64encode(content.encode("utf-8")).decode("ascii")

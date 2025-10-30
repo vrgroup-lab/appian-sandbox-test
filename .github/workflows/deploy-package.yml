@@ -409,7 +409,7 @@ jobs:
           echo "package_path=$pkg" >> "$GITHUB_OUTPUT"
 
       - name: Preparar scripts de base de datos
-        if: ${{ env.PROMOTE_QA_ENABLED == 'true' }}
+        if: ${{ env.PROMOTE_QA_ENABLED == 'true' && needs.export.outputs.database_scripts != '' && needs.export.outputs.database_scripts != '[]' }}
         id: prepare_db_scripts
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-prepare-db-scripts@sql
         with:
@@ -455,7 +455,6 @@ jobs:
           icf_path: ${{ steps.normalize_icf.outputs.icf_path }}
           db_scripts_path: ${{ steps.prepare_db_scripts.outputs.db_scripts_path != '' && steps.prepare_db_scripts.outputs.db_scripts_path || fromJSON('null') }}
           data_source: ${{ steps.prepare_db_scripts.outputs.data_source != '' && steps.prepare_db_scripts.outputs.data_source || fromJSON('null') }}
-          db_scripts_manifest: ${{ steps.prepare_db_scripts.outputs.db_scripts_manifest != '' && steps.prepare_db_scripts.outputs.db_scripts_manifest || fromJSON('null') }}
         env:
           APPIAN_API_KEY_TARGET: ${{ env.APPIAN_API_KEY_TARGET }}
 
@@ -468,7 +467,6 @@ jobs:
           package_path: ${{ steps.package_path.outputs.package_path }}
           db_scripts_path: ${{ steps.prepare_db_scripts.outputs.db_scripts_path != '' && steps.prepare_db_scripts.outputs.db_scripts_path || fromJSON('null') }}
           data_source: ${{ steps.prepare_db_scripts.outputs.data_source != '' && steps.prepare_db_scripts.outputs.data_source || fromJSON('null') }}
-          db_scripts_manifest: ${{ steps.prepare_db_scripts.outputs.db_scripts_manifest != '' && steps.prepare_db_scripts.outputs.db_scripts_manifest || fromJSON('null') }}
         env:
           APPIAN_API_KEY_TARGET: ${{ env.APPIAN_API_KEY_TARGET }}
 
@@ -604,7 +602,7 @@ jobs:
           echo "package_path=$pkg" >> "$GITHUB_OUTPUT"
 
       - name: Preparar scripts de base de datos
-        if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' }}
+        if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' && needs.export.outputs.database_scripts != '' && needs.export.outputs.database_scripts != '[]' }}
         id: prepare_db_scripts
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-prepare-db-scripts@sql
         with:
@@ -650,7 +648,6 @@ jobs:
           icf_path: ${{ steps.normalize_icf.outputs.icf_path }}
           db_scripts_path: ${{ steps.prepare_db_scripts.outputs.db_scripts_path != '' && steps.prepare_db_scripts.outputs.db_scripts_path || fromJSON('null') }}
           data_source: ${{ steps.prepare_db_scripts.outputs.data_source != '' && steps.prepare_db_scripts.outputs.data_source || fromJSON('null') }}
-          db_scripts_manifest: ${{ steps.prepare_db_scripts.outputs.db_scripts_manifest != '' && steps.prepare_db_scripts.outputs.db_scripts_manifest || fromJSON('null') }}
         env:
           APPIAN_API_KEY_TARGET: ${{ env.APPIAN_API_KEY_TARGET }}
 
@@ -663,7 +660,6 @@ jobs:
           package_path: ${{ steps.package_path.outputs.package_path }}
           db_scripts_path: ${{ steps.prepare_db_scripts.outputs.db_scripts_path != '' && steps.prepare_db_scripts.outputs.db_scripts_path || fromJSON('null') }}
           data_source: ${{ steps.prepare_db_scripts.outputs.data_source != '' && steps.prepare_db_scripts.outputs.data_source || fromJSON('null') }}
-          db_scripts_manifest: ${{ steps.prepare_db_scripts.outputs.db_scripts_manifest != '' && steps.prepare_db_scripts.outputs.db_scripts_manifest || fromJSON('null') }}
         env:
           APPIAN_API_KEY_TARGET: ${{ env.APPIAN_API_KEY_TARGET }}
 
