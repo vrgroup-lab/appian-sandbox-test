@@ -145,22 +145,62 @@ def build_release_payload() -> tuple[str, str, str, dict]:
     if git_ref:
         summary_lines.append(f"- Ref: `{git_ref}` @ {git_sha[:7] if git_sha else ''}")
 
+    repo_url = f"https://github.com/{repository}"
+    commitish = git_sha or git_ref or "main"
+
+    def tree_link(path: str) -> str:
+        cleaned = path.lstrip("./")
+        return f"[{path}]({repo_url}/tree/{commitish}/{cleaned})"
+
+    def blob_link(path: str) -> str:
+        cleaned = path.lstrip("./")
+        return f"[{path}]({repo_url}/blob/{commitish}/{cleaned})"
+
     artifacts_lines = []
     if artifact_name:
-        artifacts_lines.append(f"- Export artifact: `{artifact_name}`")
+        artifacts_lines.append(
+            f"- Export artifact: `{artifact_name}`"
+        )
     if artifact_dir:
-        artifacts_lines.append(f"- Sandbox dir: `{artifact_dir}`")
+        artifacts_lines.append(
+            f"- Sandbox dir: {tree_link(artifact_dir)}"
+        )
     if metadata_path:
-        artifacts_lines.append(f"- Metadata JSON: `{metadata_path}`")
+        artifacts_lines.append(
+            f"- Metadata JSON: {blob_link(metadata_path)}"
+        )
     if package_artifact_name:
-        artifacts_lines.append(f"- Package artifact: `{package_artifact_name}`")
+        artifacts_lines.append(
+            f"- Package artifact: `{package_artifact_name}`"
+        )
     if package_file_name:
-        artifacts_lines.append(f"- Package file: `{package_file_name}`")
+        package_path = (
+            f"{artifact_dir}/{package_file_name}"
+            if artifact_dir and package_file_name
+            else package_file_name
+        )
+        if artifact_dir and package_file_name:
+            artifacts_lines.append(
+                f"- Package file: {blob_link(package_path)}"
+            )
+        else:
+            artifacts_lines.append(f"- Package file: `{package_file_name}`")
     if package_status:
         artifacts_lines.append(f"- Package status: {package_status}")
     if icf_status:
         detail = icf_file if icf_file else "(sin archivo)"
-        artifacts_lines.append(f"- ICF template: {icf_status} {detail}")
+        if icf_file and artifact_dir:
+            icf_path = f"{artifact_dir}/{icf_file}"
+            artifacts_lines.append(
+                f"- ICF template: {icf_status} {blob_link(icf_path)}"
+            )
+        else:
+            artifacts_lines.append(f"- ICF template: {icf_status} {detail}")
+
+    if run_url:
+        artifacts_lines.append(
+            f"- Artifacts (run): [ver en GitHub Actions]({run_url}#artifacts)"
+        )
 
     body_sections = [
         "## Resumen",
