@@ -211,7 +211,6 @@ jobs:
         id: prepare_icf
         env:
           ARTIFACT_DIR: ${{ steps.prep.outputs.dest }}
-          FALLBACK_TEMPLATE_PATH: provisioning/icf-template.properties
         run: python3 .github/scripts/prepare_icf_template.py
 
       - name: Publicar plantilla ICF para promoción
@@ -334,7 +333,7 @@ jobs:
           PACKAGE_ARTIFACT: ${{ steps.resolve_package_qa.outputs.artifact_name }}
 
       - name: Descargar plantilla ICF
-        if: ${{ needs.archive_export.outputs.icf_template_path != '' }}
+        if: ${{ needs.archive_export.outputs.icf_template_status == 'ready' }}
         id: download_icf_template_qa
         uses: actions/download-artifact@v4
         with:
@@ -377,16 +376,18 @@ jobs:
           artifact-name: ${{ needs.export.outputs.artifact_name }}
 
       - name: Construir ICF efímero
+        if: ${{ needs.archive_export.outputs.icf_template_status == 'ready' }}
         id: build_icf
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@sql
         env:
           ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES_QA }}
         with:
-          template_path: ${{ steps.download_icf_template_qa.outputs.download-path != '' && format('{0}/{1}', steps.download_icf_template_qa.outputs.download-path, needs.archive_export.outputs.icf_template_file) || 'provisioning/icf-template.properties' }}
+          template_path: ${{ format('{0}/{1}', steps.download_icf_template_qa.outputs.download-path, needs.archive_export.outputs.icf_template_file) }}
           env: qa
           out_path: ${{ runner.temp }}/icf-qa.properties
 
-      - name: Promover aplicación
+      - name: Promover aplicación (con ICF)
+        if: ${{ needs.archive_export.outputs.icf_template_status == 'ready' }}
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@sql
         with:
           source_env: dev
@@ -398,8 +399,20 @@ jobs:
         env:
           APPIAN_API_KEY_TARGET: ${{ env.APPIAN_API_KEY_TARGET }}
 
+      - name: Promover aplicación (sin ICF)
+        if: ${{ needs.archive_export.outputs.icf_template_status != 'ready' }}
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@sql
+        with:
+          source_env: dev
+          target_env: qa
+          package_path: ${{ steps.package_path.outputs.package_path }}
+          db_scripts_path: ${{ steps.prepare_db_scripts.outputs.db_scripts_path != '' && steps.prepare_db_scripts.outputs.db_scripts_path || fromJSON('null') }}
+          data_source: ${{ steps.prepare_db_scripts.outputs.data_source != '' && steps.prepare_db_scripts.outputs.data_source || fromJSON('null') }}
+        env:
+          APPIAN_API_KEY_TARGET: ${{ env.APPIAN_API_KEY_TARGET }}
+
       - name: Cleanup ICF
-        if: ${{ always() }}
+        if: ${{ needs.archive_export.outputs.icf_template_status == 'ready' && always() }}
         run: shred -u ${{ steps.build_icf.outputs.icf_path }} || true
 
   promote_prod_after_qa:
@@ -458,7 +471,7 @@ jobs:
           EXPORT_ARTIFACT: ${{ needs.export.outputs.artifact_name }}
 
       - name: Descargar plantilla ICF
-        if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' && needs.archive_export.outputs.icf_template_path != '' }}
+        if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' && needs.archive_export.outputs.icf_template_status == 'ready' }}
         id: download_icf_template_devprod
         uses: actions/download-artifact@v4
         with:
@@ -513,17 +526,18 @@ jobs:
           artifact-name: ${{ needs.export.outputs.artifact_name }}
 
       - name: Construir ICF efímero
-        if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' }}
+        if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' && needs.archive_export.outputs.icf_template_status == 'ready' }}
         id: build_icf
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@sql
         env:
           ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES_PROD }}
         with:
-          template_path: ${{ steps.download_icf_template_devprod.outputs.download-path != '' && format('{0}/{1}', steps.download_icf_template_devprod.outputs.download-path, needs.archive_export.outputs.icf_template_file) || 'provisioning/icf-template.properties' }}
+          template_path: ${{ format('{0}/{1}', steps.download_icf_template_devprod.outputs.download-path, needs.archive_export.outputs.icf_template_file) }}
           env: prod
           out_path: ${{ runner.temp }}/icf-prod.properties
-      - name: Promover aplicación
-        if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' }}
+
+      - name: Promover aplicación (con ICF)
+        if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' && needs.archive_export.outputs.icf_template_status == 'ready' }}
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@sql
         with:
           source_env: dev
@@ -535,13 +549,21 @@ jobs:
         env:
           APPIAN_API_KEY_TARGET: ${{ env.APPIAN_API_KEY_TARGET }}
 
+      - name: Promover aplicación (sin ICF)
+        if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' && needs.archive_export.outputs.icf_template_status != 'ready' }}
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@sql
+        with:
+          source_env: dev
+          target_env: prod
+          package_path: ${{ steps.package_path.outputs.package_path }}
+          db_scripts_path: ${{ steps.prepare_db_scripts.outputs.db_scripts_path != '' && steps.prepare_db_scripts.outputs.db_scripts_path || fromJSON('null') }}
+          data_source: ${{ steps.prepare_db_scripts.outputs.data_source != '' && steps.prepare_db_scripts.outputs.data_source || fromJSON('null') }}
+        env:
+          APPIAN_API_KEY_TARGET: ${{ env.APPIAN_API_KEY_TARGET }}
+
       - name: Cleanup ICF
-        if: ${{ always() }}
-        run: |
-          if [ "${PROMOTE_QA_PROD_ENABLED}" != "true" ]; then
-            exit 0
-          fi
-          shred -u ${{ steps.build_icf.outputs.icf_path }} || true
+        if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' && needs.archive_export.outputs.icf_template_status == 'ready' && always() }}
+        run: shred -u ${{ steps.build_icf.outputs.icf_path }} || true
 
       - name: Registrar estado promoción QA → Prod
         id: record_devqa_status
@@ -619,7 +641,7 @@ jobs:
           PACKAGE_ARTIFACT: ${{ steps.resolve_package_qaprod.outputs.artifact_name }}
 
       - name: Descargar plantilla ICF
-        if: ${{ env.PROMOTE_QA_ONLY_ENABLED == 'true' && needs.archive_export.outputs.icf_template_path != '' }}
+        if: ${{ env.PROMOTE_QA_ONLY_ENABLED == 'true' && needs.archive_export.outputs.icf_template_status == 'ready' }}
         id: download_icf_template_qaprod
         uses: actions/download-artifact@v4
         with:
@@ -664,18 +686,18 @@ jobs:
           artifact-name: ${{ needs.export.outputs.artifact_name }}
 
       - name: Construir ICF efímero
-        if: ${{ env.PROMOTE_QA_ONLY_ENABLED == 'true' }}
+        if: ${{ env.PROMOTE_QA_ONLY_ENABLED == 'true' && needs.archive_export.outputs.icf_template_status == 'ready' }}
         id: build_icf
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@sql
         env:
           ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES_PROD }}
         with:
-          template_path: ${{ steps.download_icf_template_qaprod.outputs.download-path != '' && format('{0}/{1}', steps.download_icf_template_qaprod.outputs.download-path, needs.archive_export.outputs.icf_template_file) || 'provisioning/icf-template.properties' }}
+          template_path: ${{ format('{0}/{1}', steps.download_icf_template_qaprod.outputs.download-path, needs.archive_export.outputs.icf_template_file) }}
           env: prod
           out_path: ${{ runner.temp }}/icf-prod.properties
 
-      - name: Promover aplicación
-        if: ${{ env.PROMOTE_QA_ONLY_ENABLED == 'true' }}
+      - name: Promover aplicación (con ICF)
+        if: ${{ env.PROMOTE_QA_ONLY_ENABLED == 'true' && needs.archive_export.outputs.icf_template_status == 'ready' }}
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@sql
         with:
           source_env: qa
@@ -687,13 +709,21 @@ jobs:
         env:
           APPIAN_API_KEY_TARGET: ${{ env.APPIAN_API_KEY_TARGET }}
 
+      - name: Promover aplicación (sin ICF)
+        if: ${{ env.PROMOTE_QA_ONLY_ENABLED == 'true' && needs.archive_export.outputs.icf_template_status != 'ready' }}
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@sql
+        with:
+          source_env: qa
+          target_env: prod
+          package_path: ${{ steps.package_path.outputs.package_path }}
+          db_scripts_path: ${{ steps.prepare_db_scripts.outputs.db_scripts_path != '' && steps.prepare_db_scripts.outputs.db_scripts_path || fromJSON('null') }}
+          data_source: ${{ steps.prepare_db_scripts.outputs.data_source != '' && steps.prepare_db_scripts.outputs.data_source || fromJSON('null') }}
+        env:
+          APPIAN_API_KEY_TARGET: ${{ env.APPIAN_API_KEY_TARGET }}
+
       - name: Cleanup ICF
-        if: ${{ always() }}
-        run: |
-          if [ "${PROMOTE_QA_ONLY_ENABLED}" != "true" ]; then
-            exit 0
-          fi
-          shred -u ${{ steps.build_icf.outputs.icf_path }} || true
+        if: ${{ env.PROMOTE_QA_ONLY_ENABLED == 'true' && needs.archive_export.outputs.icf_template_status == 'ready' && always() }}
+        run: shred -u ${{ steps.build_icf.outputs.icf_path }} || true
 
       - name: Registrar estado promoción QA → Prod directa
         id: record_qaprod_status

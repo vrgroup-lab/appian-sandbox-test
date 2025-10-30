@@ -190,7 +190,6 @@ jobs:
         id: prepare_icf
         env:
           ARTIFACT_DIR: ${{ steps.prep.outputs.dest }}
-          FALLBACK_TEMPLATE_PATH: provisioning/icf-template.properties
         run: python3 .github/scripts/prepare_icf_template.py
 
       - name: Publicar plantilla ICF para promoción
@@ -422,7 +421,7 @@ jobs:
         env:
           ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES_QA }}
         with:
-          template_path: ${{ steps.download_icf_template_qa.outputs.download-path != '' && format('{0}/{1}', steps.download_icf_template_qa.outputs.download-path, needs.archive_export.outputs.icf_template_file) || 'provisioning/icf-template.properties' }}
+          template_path: ${{ format('{0}/{1}', steps.download_icf_template_qa.outputs.download-path, needs.archive_export.outputs.icf_template_file) }}
           env: qa
           out_path: ${{ runner.temp }}/customization.properties
 
@@ -615,7 +614,7 @@ jobs:
         env:
           ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES_PROD }}
         with:
-          template_path: ${{ steps.download_icf_template_devprod.outputs.download-path != '' && format('{0}/{1}', steps.download_icf_template_devprod.outputs.download-path, needs.archive_export.outputs.icf_template_file) || 'provisioning/icf-template.properties' }}
+          template_path: ${{ format('{0}/{1}', steps.download_icf_template_devprod.outputs.download-path, needs.archive_export.outputs.icf_template_file) }}
           env: prod
           out_path: ${{ runner.temp }}/customization.properties
 
