@@ -496,6 +496,7 @@ jobs:
           fi
 
   promote_prod_after_qa:
+    if: ${{ inputs.plan == 'dev-qa-prod' }}
     needs: [promote_qa, archive_export, export]
     runs-on: ubuntu-latest
     environment: prod
