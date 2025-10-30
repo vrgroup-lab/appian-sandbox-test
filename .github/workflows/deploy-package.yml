@@ -689,14 +689,14 @@ jobs:
             echo "status=skipped" >> "$GITHUB_OUTPUT"
           fi
 
-  publish_release:
-    needs: [export, archive_export, promote_qa, promote_prod_after_qa]
-    if: ${{ success() }}
+  publish_release_prod:
+    needs: [archive_export, promote_qa, promote_prod_after_qa]
+    if: ${{ success() && inputs.plan == 'dev-qa-prod' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Publicar release de despliegue
+      - name: Publicar release (Dev → QA → Prod)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}

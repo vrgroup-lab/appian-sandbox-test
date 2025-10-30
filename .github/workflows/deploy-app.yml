@@ -738,14 +738,14 @@ jobs:
             echo "status=skipped" >> "$GITHUB_OUTPUT"
           fi
 
-  publish_release:
-    needs: [export, archive_export, promote_qa, promote_prod_after_qa, promote_prod_from_qa]
-    if: ${{ success() }}
+  publish_release_dev_qa_prod:
+    needs: [archive_export, promote_qa, promote_prod_after_qa]
+    if: ${{ success() && inputs.plan == 'dev-qa-prod' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Publicar release de despliegue
+      - name: Publicar release (Dev → QA → Prod)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -768,5 +768,38 @@ jobs:
           ICF_TEMPLATE_FILE: ${{ needs.archive_export.outputs.icf_template_file }}
           PROMOTE_QA_RESULT: ${{ needs.promote_qa.outputs.status }}
           PROMOTE_PROD_AFTER_QA_RESULT: ${{ needs.promote_prod_after_qa.outputs.status }}
+          PROMOTE_PROD_FROM_QA_RESULT: skipped
+        run: python3 .github/scripts/create_release.py
+
+  publish_release_qa_prod:
+    needs: [archive_export, promote_qa, promote_prod_from_qa]
+    if: ${{ success() && inputs.plan == 'qa-to-prod' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Publicar release (QA → Prod)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_NUMBER: ${{ github.run_number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          GIT_REF: ${{ github.ref }}
+          GIT_SHA: ${{ github.sha }}
+          PLAN: ${{ inputs.plan }}
+          DEPLOY_KIND: app
+          APP_NAME: ${{ vars.APP_NAME || '' }}
+          PACKAGE_NAME: ''
+          ARTIFACT_NAME: ${{ needs.export.outputs.artifact_name }}
+          ARTIFACT_DIR: ${{ needs.archive_export.outputs.artifact_dir }}
+          METADATA_PATH: ${{ needs.archive_export.outputs.metadata_path }}
+          PACKAGE_ARTIFACT_NAME: ${{ needs.archive_export.outputs.package_artifact_name }}
+          PACKAGE_FILE_NAME: ${{ needs.archive_export.outputs.package_file_name }}
+          PACKAGE_STATUS: ${{ needs.archive_export.outputs.package_status }}
+          ICF_TEMPLATE_STATUS: ${{ needs.archive_export.outputs.icf_template_status }}
+          ICF_TEMPLATE_FILE: ${{ needs.archive_export.outputs.icf_template_file }}
+          PROMOTE_QA_RESULT: ${{ needs.promote_qa.outputs.status }}
+          PROMOTE_PROD_AFTER_QA_RESULT: skipped
           PROMOTE_PROD_FROM_QA_RESULT: ${{ needs.promote_prod_from_qa.outputs.status }}
         run: python3 .github/scripts/create_release.py
