@@ -751,6 +751,7 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           GIT_REF: ${{ github.ref }}
           GIT_SHA: ${{ github.sha }}
+          GIT_REF_NAME: ${{ github.ref_name }}
           PLAN: ${{ inputs.plan }}
           DEPLOY_KIND: app
           APP_NAME: ${{ vars.APP_NAME || '' }}
@@ -766,6 +767,8 @@ jobs:
           PROMOTE_QA_RESULT: ${{ needs.promote_qa.result }}
           PROMOTE_PROD_AFTER_QA_RESULT: ${{ needs.promote_prod_after_qa.result }}
           PROMOTE_PROD_FROM_QA_RESULT: skipped
+          TRIGGERING_ACTOR: ${{ github.triggering_actor || github.actor }}
+          RUN_STARTED_AT: ${{ github.run_started_at }}
         run: python3 .github/scripts/create_release.py
 
   publish_release_qa_prod:
@@ -784,6 +787,7 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           GIT_REF: ${{ github.ref }}
           GIT_SHA: ${{ github.sha }}
+          GIT_REF_NAME: ${{ github.ref_name }}
           PLAN: ${{ inputs.plan }}
           DEPLOY_KIND: app
           APP_NAME: ${{ vars.APP_NAME || '' }}
@@ -799,4 +803,6 @@ jobs:
           PROMOTE_QA_RESULT: skipped
           PROMOTE_PROD_AFTER_QA_RESULT: skipped
           PROMOTE_PROD_FROM_QA_RESULT: ${{ needs.promote_prod_from_qa.result }}
+          TRIGGERING_ACTOR: ${{ github.triggering_actor || github.actor }}
+          RUN_STARTED_AT: ${{ github.run_started_at }}
         run: python3 .github/scripts/create_release.py

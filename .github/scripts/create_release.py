@@ -7,6 +7,7 @@ import json
 import os
 import re
 import sys
+from datetime import datetime, timezone
 from urllib import error, request
 
 
@@ -93,6 +94,7 @@ def build_release_payload() -> tuple[str, str, str, dict]:
     run_url = get_env("RUN_URL")
     git_ref = get_env("GIT_REF")
     git_sha = get_env("GIT_SHA")
+    git_ref_name = get_env("GIT_REF_NAME")
 
     app_name = get_env("APP_NAME")
     package_name = get_env("PACKAGE_NAME")
@@ -138,6 +140,25 @@ def build_release_payload() -> tuple[str, str, str, dict]:
         f"- Plan: `{plan or 'unknown'}` ({plan_label})",
         f"- Tipo: {deploy_kind}",
     ]
+    trigger_actor = get_env("TRIGGERING_ACTOR") or get_env("TRIGGER_ACTOR") or get_env("INITIATED_BY")
+    run_started_at_raw = get_env("RUN_STARTED_AT")
+
+    def format_runtime(value: str) -> str:
+        if not value:
+            return ""
+        try:
+            dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return value
+        local_dt = dt.astimezone()
+        return local_dt.strftime("%Y-%m-%d %H:%M:%S %Z")
+
+    if trigger_actor:
+        summary_lines.append(f"- Triggered by: @{trigger_actor}")
+    started_at_fmt = format_runtime(run_started_at_raw)
+    if started_at_fmt:
+        summary_lines.append(f"- Started at: {started_at_fmt}")
+
     if app_name:
         summary_lines.append(f"- App: {app_name}")
     if deploy_kind == "package" and package_name:
@@ -145,16 +166,23 @@ def build_release_payload() -> tuple[str, str, str, dict]:
     if git_ref:
         summary_lines.append(f"- Ref: `{git_ref}` @ {git_sha[:7] if git_sha else ''}")
 
+    def derive_branch(ref_name: str, ref: str) -> str:
+        if ref_name:
+            return ref_name
+        if ref.startswith("refs/heads/"):
+            return ref.split("/", 2)[-1]
+        return ref or "main"
+
+    branch_name = derive_branch(git_ref_name, git_ref)
     repo_url = f"https://github.com/{repository}"
-    commitish = git_sha or git_ref or "main"
 
     def tree_link(path: str) -> str:
         cleaned = path.lstrip("./")
-        return f"[{path}]({repo_url}/tree/{commitish}/{cleaned})"
+        return f"[{path}]({repo_url}/tree/{branch_name}/{cleaned})"
 
     def blob_link(path: str) -> str:
         cleaned = path.lstrip("./")
-        return f"[{path}]({repo_url}/blob/{commitish}/{cleaned})"
+        return f"[{path}]({repo_url}/blob/{branch_name}/{cleaned})"
 
     artifacts_lines = []
     if artifact_name:
@@ -202,6 +230,12 @@ def build_release_payload() -> tuple[str, str, str, dict]:
             f"- Artifacts (run): [ver en GitHub Actions]({run_url}#artifacts)"
         )
 
+    approvals = fetch_run_approvals(token, repository, run_id)
+    approvals_lines = [
+        f"- @{item['user']} ({item['state']})"
+        for item in approvals
+    ]
+
     body_sections = [
         "## Resumen",
         "\n".join(summary_lines),
@@ -210,6 +244,16 @@ def build_release_payload() -> tuple[str, str, str, dict]:
         body_sections.extend(["\n## Resultado por entorno", "\n".join(env_status)])
     if artifacts_lines:
         body_sections.extend(["\n## Artefactos", "\n".join(artifacts_lines)])
+    body_sections.extend([
+        "\n## Aprobaciones",
+        "\n".join(approvals_lines) if approvals_lines else "_Sin aprobaciones registradas_",
+    ])
+    body_sections.extend(
+        [
+            "\n## Resumen de cambios (completar)",
+            "_Editar este release y documentar los cambios promovidos._",
+        ]
+    )
 
     body_sections.append(
         "\n---\n_Generado automáticamente por GitHub Actions._"
@@ -262,6 +306,39 @@ def ensure_release(meta: dict) -> None:
         return
 
     github_request("POST", f"/repos/{repository}/releases", token, payload)
+
+
+def fetch_run_approvals(token: str, repository: str, run_id: str) -> list[dict[str, str]]:
+    if not run_id:
+        return []
+    response = github_request(
+        "GET",
+        f"/repos/{repository}/actions/runs/{run_id}/approvals",
+        token,
+        raise_on_404=False,
+    )
+    if not response:
+        return []
+    if isinstance(response, dict) and "approvals" in response:
+        data = response.get("approvals") or []
+    else:
+        data = response
+
+    approvals: list[dict[str, str]] = []
+    for item in data or []:
+        if not isinstance(item, dict):
+            continue
+        user = item.get("user") or {}
+        login = user.get("login") if isinstance(user, dict) else None
+        if not login:
+            continue
+        approvals.append(
+            {
+                "user": login,
+                "state": (item.get("state") or "approved").lower(),
+            }
+        )
+    return approvals
 
 
 def main() -> int:
