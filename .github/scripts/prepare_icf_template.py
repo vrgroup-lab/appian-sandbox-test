@@ -138,7 +138,10 @@ def main() -> int:
         log(f"Plantilla encontrada: {chosen}")
         status = "ready"
     else:
-        log("::notice::No se encontró plantilla en los artefactos descargados.")
+        log(
+            "::notice::No se encontró plantilla en los artefactos descargados;"
+            " el despliegue continuará sin overrides ICF."
+        )
 
     content: str | None = None
     source_path: str | None = None
