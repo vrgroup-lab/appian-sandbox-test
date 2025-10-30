@@ -133,41 +133,15 @@ jobs:
           RAW_RESPONSE_PATH: ${{ needs.export.outputs.raw_response_path }}
           DEPLOYMENT_UUID: ${{ needs.export.outputs.deployment_uuid }}
           DEPLOYMENT_STATUS: ${{ needs.export.outputs.deployment_status }}
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          dest_dir = Path(os.environ["DEST"])
-          metadata_path = dest_dir / "export-metadata.json"
-
-          def resolved_path(output_value: str, fallback_name: str) -> str:
-              if not output_value:
-                  return str(dest_dir / fallback_name)
-              candidate = Path(output_value)
-              # Preserve basename but point inside DEST so that the metadata describes local copy
-              return str(dest_dir / candidate.name)
-
-
-          artifact_name = os.environ.get("ARTIFACT_NAME", "")
-          artifact_path_output = os.environ.get("ARTIFACT_PATH", "")
-          artifact_zip_name = Path(artifact_path_output).name if artifact_path_output else f"{artifact_name}.zip"
-
-          data = {
-              "artifact_name": artifact_name,
-              "artifact_path": str(dest_dir / artifact_zip_name),
-              "artifact_dir": str(dest_dir),
-              "manifest_path": resolved_path(os.environ.get("MANIFEST_PATH", ""), "export-manifest.json"),
-              "raw_response_path": resolved_path(os.environ.get("RAW_RESPONSE_PATH", ""), "export-response.json"),
-              "deployment_uuid": os.environ.get("DEPLOYMENT_UUID", ""),
-              "deployment_status": os.environ.get("DEPLOYMENT_STATUS", ""),
-          }
-
-          metadata_path.parent.mkdir(parents=True, exist_ok=True)
-          metadata_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
-          PY
+          DATABASE_SCRIPTS_JSON: ${{ needs.export.outputs.database_scripts || '' }}
+          DOWNLOADED_FILES_JSON: ${{ needs.export.outputs.downloaded_files || '' }}
+          PLUGINS_ZIP: ${{ needs.export.outputs.plugins_zip || '' }}
+          CUSTOMIZATION_FILE: ${{ needs.export.outputs.customization_file || '' }}
+          CUSTOMIZATION_TEMPLATE: ${{ needs.export.outputs.customization_template || '' }}
+          ICF_TEMPLATE_STATUS: ${{ steps.prepare_icf.outputs.icf_template_status }}
+          ICF_TEMPLATE_FILE: ${{ steps.prepare_icf.outputs.icf_template_file }}
+          ICF_OVERRIDES_JSON_B64: ${{ steps.prepare_icf.outputs.icf_overrides_json_b64 || '' }}
+        run: python3 .github/scripts/write_export_metadata.py
 
       - name: Localizar paquete exportado
         id: locate_package

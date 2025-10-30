@@ -139,52 +139,17 @@ jobs:
           ARTIFACT_NAME: ${{ needs.export.outputs.artifact_name }}
           ARTIFACT_PATH: ${{ needs.export.outputs.artifact_path }}
           ARTIFACT_DIR: ${{ needs.export.outputs.artifact_dir }}
-          DATABASE_SCRIPTS: ${{ needs.export.outputs.database_scripts }}
-          PLUGINS_ZIP: ${{ needs.export.outputs.plugins_zip }}
-          CUSTOMIZATION_FILE: ${{ needs.export.outputs.customization_file }}
-          CUSTOMIZATION_TEMPLATE: ${{ needs.export.outputs.customization_template }}
-          DOWNLOADED_FILES: ${{ needs.export.outputs.downloaded_files }}
+          DATABASE_SCRIPTS_JSON: ${{ needs.export.outputs.database_scripts || '' }}
+          DOWNLOADED_FILES_JSON: ${{ needs.export.outputs.downloaded_files || '' }}
+          PLUGINS_ZIP: ${{ needs.export.outputs.plugins_zip || '' }}
+          CUSTOMIZATION_FILE: ${{ needs.export.outputs.customization_file || '' }}
+          CUSTOMIZATION_TEMPLATE: ${{ needs.export.outputs.customization_template || '' }}
           DEPLOYMENT_UUID: ${{ needs.export.outputs.deployment_uuid }}
           DEPLOYMENT_STATUS: ${{ needs.export.outputs.deployment_status }}
-        run: |
-          set -euo pipefail
-          dest="${DEST}/export-metadata.json"
-          db_json="${DATABASE_SCRIPTS}"
-          if [[ -z "$db_json" ]]; then
-            db_json='[]'
-          elif ! echo "$db_json" | jq empty >/dev/null 2>&1; then
-            db_json='[]'
-          fi
-          files_json="${DOWNLOADED_FILES}"
-          if [[ -z "$files_json" ]]; then
-            files_json='[]'
-          elif ! echo "$files_json" | jq empty >/dev/null 2>&1; then
-            files_json='[]'
-          fi
-          mkdir -p "${DEST}"
-          jq -n \
-            --arg artifact_name "$ARTIFACT_NAME" \
-            --arg artifact_path "$ARTIFACT_PATH" \
-            --arg artifact_dir "$ARTIFACT_DIR" \
-            --arg plugins_zip "$PLUGINS_ZIP" \
-            --arg customization_file "$CUSTOMIZATION_FILE" \
-            --arg customization_template "$CUSTOMIZATION_TEMPLATE" \
-            --arg deployment_uuid "$DEPLOYMENT_UUID" \
-            --arg deployment_status "$DEPLOYMENT_STATUS" \
-            --argjson database_scripts "$db_json" \
-            --argjson downloaded_files "$files_json" \
-            '{
-              artifact_name: $artifact_name,
-              artifact_path: $artifact_path,
-              artifact_dir: $artifact_dir,
-              database_scripts: $database_scripts,
-              plugins_zip: $plugins_zip,
-              customization_file: $customization_file,
-              customization_template: $customization_template,
-              downloaded_files: $downloaded_files,
-              deployment_uuid: $deployment_uuid,
-              deployment_status: $deployment_status
-            }' > "$dest"
+          ICF_TEMPLATE_STATUS: ${{ steps.prepare_icf.outputs.icf_template_status }}
+          ICF_TEMPLATE_FILE: ${{ steps.prepare_icf.outputs.icf_template_file }}
+          ICF_OVERRIDES_JSON_B64: ${{ steps.prepare_icf.outputs.icf_overrides_json_b64 || '' }}
+        run: python3 .github/scripts/write_export_metadata.py
 
       - name: Preparar plantilla ICF
         id: prepare_icf
