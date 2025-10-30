@@ -162,7 +162,7 @@ def main() -> int:
                 status = "fallback"
 
     if content is None:
-        log("::notice::No se obtuvo contenido de plantilla ICF.")
+        # Ya registramos un notice arriba explicando el motivo.
         emit_output("icf_template_status", status)
         return 0
 
@@ -194,6 +194,11 @@ def main() -> int:
             f" ({source_path}) no contiene pares clave=valor."
             " No se generarán overrides automáticos; completa la plantilla"
             " con entradas 'clave=valor' si deseas sugerir overrides."
+        )
+    else:
+        log(
+            "::notice::Se generaron overrides ICF a partir de la plantilla."
+            " Revisa la issue automática para completar los pasos."
         )
 
     encoded_content = base64.b64encode(content.encode("utf-8")).decode("ascii")
