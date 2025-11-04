@@ -93,6 +93,7 @@ jobs:
         with:
           name: ${{ steps.resolve_export_name.outputs.value }}
           path: ${{ steps.export.outputs.artifact_path }}
+          overwrite: true
 
       - name: Preparar metadata de export
         if: ${{ steps.export.outputs.raw_response_path != '' || steps.export.outputs.manifest_path != '' }}
@@ -121,6 +122,7 @@ jobs:
         with:
           name: ${{ format('{0}-meta', steps.resolve_export_name.outputs.value) }}
           path: ${{ steps.prep_export_meta.outputs.dir }}
+          overwrite: true
 
   archive_export:
     name: Procesar artefactos de export e ICF
@@ -243,6 +245,7 @@ jobs:
         with:
           name: icf-template
           path: ${{ steps.prepare_icf.outputs.icf_template_path }}
+          overwrite: true
 
       - name: Localizar paquete exportado
         id: locate_package
@@ -281,6 +284,7 @@ jobs:
         with:
           name: promote-package
           path: ${{ steps.locate_package.outputs.package_path }}
+          overwrite: true
 
       - name: Publicar rutas generadas
         id: publish
