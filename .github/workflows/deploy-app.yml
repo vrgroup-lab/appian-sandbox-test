@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.plan == 'qa-to-prod' && 'qa' || 'dev' }}
     outputs:
-      artifact_name: ${{ steps.export.outputs.artifact_name }}
+      artifact_name: ${{ steps.resolve_export_name.outputs.value }}
       artifact_path: ${{ steps.export.outputs.artifact_path }}
       artifact_dir: ${{ steps.export.outputs.artifact_dir }}
       manifest_path: ${{ steps.export.outputs.manifest_path }}
@@ -65,6 +65,53 @@ jobs:
           deploy_kind: app
           app_uuid: ${{ vars.APP_UUID }}
           app_name: ${{ vars.APP_NAME || '' }}
+
+      - name: Resolver nombre de artifact
+        id: resolve_export_name
+        run: |
+          set -euo pipefail
+          name="${ARTIFACT_NAME}"
+          if [ -z "$name" ]; then
+            name="export-${GITHUB_RUN_ID}"
+          fi
+          echo "value=$name" >> "$GITHUB_OUTPUT"
+        env:
+          ARTIFACT_NAME: ${{ steps.export.outputs.artifact_name }}
+
+      - name: Publicar artefacto exportado
+        if: ${{ steps.export.outputs.artifact_path != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.resolve_export_name.outputs.value }}
+          path: ${{ steps.export.outputs.artifact_path }}
+
+      - name: Preparar metadata de export
+        if: ${{ steps.export.outputs.raw_response_path != '' || steps.export.outputs.manifest_path != '' }}
+        id: prep_export_meta
+        env:
+          RAW_RESPONSE: ${{ steps.export.outputs.raw_response_path }}
+          MANIFEST: ${{ steps.export.outputs.manifest_path }}
+        run: |
+          set -euo pipefail
+          dest="${RUNNER_TEMP}/export-meta"
+          rm -rf "$dest"
+          mkdir -p "$dest"
+          if [ -n "$RAW_RESPONSE" ] && [ -f "$RAW_RESPONSE" ]; then
+            cp "$RAW_RESPONSE" "$dest/"
+          fi
+          if [ -n "$MANIFEST" ] && [ -f "$MANIFEST" ]; then
+            cp "$MANIFEST" "$dest/"
+          fi
+          if [ "$(ls -A "$dest")" ]; then
+            echo "dir=$dest" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publicar metadata del export
+        if: ${{ steps.prep_export_meta.outputs.dir != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ format('{0}-meta', steps.resolve_export_name.outputs.value) }}
+          path: ${{ steps.prep_export_meta.outputs.dir }}
 
   archive_export:
     name: Procesar artefactos de export e ICF
