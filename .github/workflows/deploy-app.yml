@@ -59,6 +59,7 @@ jobs:
         env:
           APPIAN_DEV_API_KEY: ${{ secrets.APPIAN_DEV_API_KEY }}
           APPIAN_QA_API_KEY: ${{ secrets.APPIAN_QA_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           env: ${{ inputs.plan == 'qa-to-prod' && 'qa' || 'dev' }}
           deploy_kind: app
