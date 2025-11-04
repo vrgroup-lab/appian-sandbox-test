@@ -50,6 +50,19 @@ jobs:
       customization_file: ${{ steps.export.outputs.customization_file }}
       customization_template: ${{ steps.export.outputs.customization_template }}
     steps:
+      - name: Checkout acciones core
+        uses: actions/checkout@v4
+        with:
+          repository: vrgroup-lab/appian-cicd-core
+          ref: refactor
+          path: core-actions
+
+      - name: Preparar acciones core
+        run: |
+          set -euo pipefail
+          mkdir -p .github/actions
+          rsync -a core-actions/.github/actions/ .github/actions/
+
       - name: Ejecutar export Appian
         id: export
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-export@refactor
