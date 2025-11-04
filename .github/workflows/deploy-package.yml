@@ -35,6 +35,7 @@ jobs:
   export:
     needs: validate
     runs-on: ubuntu-latest
+    environment: dev
     outputs:
       artifact_name: ${{ steps.export.outputs.artifact_name }}
       artifact_path: ${{ steps.export.outputs.artifact_path }}
@@ -52,6 +53,8 @@ jobs:
       - name: Ejecutar export Appian
         id: export
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-export@refactor
+        env:
+          APPIAN_DEV_API_KEY: ${{ secrets.APPIAN_DEV_API_KEY }}
         with:
           env: dev
           deploy_kind: package

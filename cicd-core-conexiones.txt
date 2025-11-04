@@ -1,12 +1,12 @@
 Integraciones con vrgroup-lab/appian-cicd-core
 ---------------------------------------------
 
-- .github/workflows/deploy-app.yml:38 ejecuta la acción vrgroup-lab/appian-cicd-core/.github/actions/appian-export@refactor para generar los artefactos de aplicación con los mismos inputs (`env`, `deploy_kind`, `app_uuid`, `app_name`).
+- .github/workflows/deploy-app.yml:38 ejecuta la acción vrgroup-lab/appian-cicd-core/.github/actions/appian-export@refactor para generar los artefactos de aplicación con los mismos inputs (`env`, `deploy_kind`, `app_uuid`, `app_name`), ahora dentro de un job con `environment` dinámico.
 - .github/workflows/deploy-package.yml:35 invoca vrgroup-lab/appian-cicd-core/.github/actions/appian-export@refactor con `package_name` y los demás parámetros requeridos.
-- .github/workflows/deploy-app.yml:363, :513 y :673 ejecutan la acción compuesta vrgroup-lab/appian-cicd-core/.github/actions/appian-prepare-db-scripts@refactor para preparar scripts de base de datos antes de promover a QA/Prod.
-- .github/workflows/deploy-package.yml:394 y :587 llaman a vrgroup-lab/appian-cicd-core/.github/actions/appian-prepare-db-scripts@refactor para packages, repitiendo el flujo hacia Prod.
-- .github/workflows/deploy-app.yml:370, :520 y :680 consumen vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@refactor para construir ICFs efímeros utilizando los overrides almacenados en los secretos ICF_JSON_OVERRIDES_*.
-- .github/workflows/deploy-package.yml:401 y :594 usan la misma acción appian-build-icf@refactor para los packages.
-- .github/workflows/deploy-app.yml:380, :393, :530, :543, :690 y :703 ejecutan la acción vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@refactor (con o sin ICF) para promover artefactos a QA o Prod usando las API keys de los entornos.
-- .github/workflows/deploy-package.yml:430, :443, :623 y :636 también llaman a appian-promote@refactor para promover packages.
+- .github/workflows/deploy-app.yml:367, :517 y :677 ejecutan la acción compuesta vrgroup-lab/appian-cicd-core/.github/actions/appian-prepare-db-scripts@refactor para preparar scripts de base de datos antes de promover a QA/Prod.
+- .github/workflows/deploy-package.yml:398 y :591 llaman a vrgroup-lab/appian-cicd-core/.github/actions/appian-prepare-db-scripts@refactor para packages, repitiendo el flujo hacia Prod.
+- .github/workflows/deploy-app.yml:374, :524 y :684 consumen vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@refactor para construir ICFs efímeros utilizando los overrides almacenados en los secretos ICF_JSON_OVERRIDES_*.
+- .github/workflows/deploy-package.yml:405 y :598 usan la misma acción appian-build-icf@refactor para los packages.
+- .github/workflows/deploy-app.yml:384, :397, :534, :547, :694 y :707 ejecutan la acción vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@refactor (con o sin ICF) para promover artefactos a QA o Prod usando las API keys de los entornos.
+- .github/workflows/deploy-package.yml:434, :447, :627 y :640 también llaman a appian-promote@refactor para promover packages.
 - README.md:3 y :7 documentan que ambos pipelines se montan sobre las acciones proporcionadas por el repositorio vrgroup-lab/appian-cicd-core@refactor.

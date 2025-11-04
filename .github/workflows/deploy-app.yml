@@ -38,6 +38,7 @@ jobs:
   export:
     needs: validate
     runs-on: ubuntu-latest
+    environment: ${{ inputs.plan == 'qa-to-prod' && 'qa' || 'dev' }}
     outputs:
       artifact_name: ${{ steps.export.outputs.artifact_name }}
       artifact_path: ${{ steps.export.outputs.artifact_path }}
@@ -55,6 +56,9 @@ jobs:
       - name: Ejecutar export Appian
         id: export
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-export@refactor
+        env:
+          APPIAN_DEV_API_KEY: ${{ secrets.APPIAN_DEV_API_KEY }}
+          APPIAN_QA_API_KEY: ${{ secrets.APPIAN_QA_API_KEY }}
         with:
           env: ${{ inputs.plan == 'qa-to-prod' && 'qa' || 'dev' }}
           deploy_kind: app
