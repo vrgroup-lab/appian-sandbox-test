@@ -343,16 +343,8 @@ jobs:
         run: python3 .github/scripts/create_icf_issue.py
 
 
-  qa_review_gate:
-    needs: [export, archive_export]
-    runs-on: ubuntu-latest
-    environment: qa
-    steps:
-      - name: Esperando revisión manual
-        run: echo 'Awaiting manual review before QA promotion'
-
   promote_qa:
-    needs: [qa_review_gate, export, archive_export]
+    needs: [export, archive_export]
     runs-on: ubuntu-latest
     environment: qa
     env:
