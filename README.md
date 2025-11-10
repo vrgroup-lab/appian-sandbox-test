@@ -1,13 +1,20 @@
 # 📦 CI/CD Pipeline – Appian - GitHub Actions
 
-> Estado: este repo ahora actúa como Sandbox de una aplicación Appian y consume acciones del repo Core (`vrgroup-lab/appian-cicd-core@refactor`). El material del antiguo monorepo fue archivado en `legacy_monorepo/`.
+> Estado: este repo ahora actúa como Sandbox de una aplicación Appian y consume acciones del repo Core (`vrgroup-lab/appian-cicd-core@flow-b`). El material del antiguo monorepo fue archivado en `legacy_monorepo/`.
 
 ## Uso rápido (wrappers hacia el Core)
 - Workflows: `deploy-app.yml` (aplicaciones) y `deploy-package.yml` (paquetes).
-- Ambos apuntan a `vrgroup-lab/appian-cicd-core/.github/actions/appian-{export,promote}@refactor` y requieren `vars.APP_UUID`.
-- Cada ejecución descarga el template de customización generado por Appian, lo procesa con `.github/scripts/prepare_icf_template.py` y abre una issue automática (`.github/templates/icf-issue.md`) con:
-  - Extracto del `.properties` real exportado.
-- JSON listo para pegar en los secretos `ICF_JSON_OVERRIDES_QA` y `ICF_JSON_OVERRIDES_PROD`.
+- Ambos apuntan a `vrgroup-lab/appian-cicd-core/.github/actions/appian-{export,promote}@flow-b` y requieren `vars.APP_UUID`.
+- Cada ejecución descarga el template de customización generado por Appian y lo procesa con `.github/scripts/prepare_icf_template.py`.
+- Los secretos `ICF_JSON_OVERRIDES_QA` y `ICF_JSON_OVERRIDES_PROD` ahora deben almacenarse directamente en formato de texto plano `clave=valor` (sin issue intermedia). Ejemplo:
+
+```properties
+connectedSystem.<UUID>.baseUrl=https://example
+connectedSystem.<UUID>.apiKeyValue=AAA
+content.<UUID>.VALUE=10
+```
+
+> Se ignoran las líneas vacías y las que comienzan con `#`. Cada asignación debe utilizar el primer `=` como separador (el resto forma parte del valor).
 - Inputs disponibles:
   - `plan` (`dev-to-qa`, `dev-qa-prod`, `qa-to-prod`).
   - `package_name` (sólo en `deploy-package.yml`).

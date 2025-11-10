@@ -65,7 +65,7 @@ jobs:
 
       - name: Ejecutar export Appian
         id: export
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-export@refactor
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-export@flow-b
         env:
           APPIAN_DEV_API_KEY: ${{ secrets.APPIAN_DEV_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -139,8 +139,6 @@ jobs:
       icf_template_source: ${{ steps.prepare_icf.outputs.icf_template_source }}
       icf_template_status: ${{ steps.prepare_icf.outputs.icf_template_status }}
       icf_template_file: ${{ steps.prepare_icf.outputs.icf_template_file }}
-      icf_issue_number: ${{ steps.raise.outputs.issue_number }}
-      icf_issue_url: ${{ steps.raise.outputs.issue_url }}
       package_artifact_name: ${{ steps.locate_package.outputs.package_artifact_name }}
       package_file_name: ${{ steps.locate_package.outputs.package_file_name }}
       package_status: ${{ steps.locate_package.outputs.package_status }}
@@ -322,26 +320,6 @@ jobs:
           echo "deployment_uuid=${{ needs.export.outputs.deployment_uuid }}"
           echo "deployment_status=${{ needs.export.outputs.deployment_status }}"
 
-      - name: Crear issue con guía para ICF
-        id: raise
-        if: ${{ steps.prepare_icf.outputs.icf_template_status == 'ready' }}
-        env:
-          PLAN: ${{ inputs.plan }}
-          ARTIFACT_DIR: ${{ steps.publish.outputs.artifact_dir }}
-          METADATA_PATH: ${{ steps.publish.outputs.metadata_path }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          TARGET_MAP: '{"dev-to-qa":["qa"],"dev-qa-prod":["qa","prod"]}'
-          TEMPLATE_PATH: .github/templates/icf-issue.md
-          PROVISIONING_TEMPLATE_PATH: provisioning/icf-template.properties
-          ICF_TEMPLATE_PATH: ${{ steps.prepare_icf.outputs.icf_template_path }}
-          ICF_TEMPLATE_CONTENT_B64: ${{ steps.prepare_icf.outputs.icf_template_content_b64 }}
-          ICF_OVERRIDES_JSON_B64: ${{ steps.prepare_icf.outputs.icf_overrides_json_b64 }}
-          ICF_OVERRIDES_QA_JSON_B64: ${{ steps.prepare_icf.outputs.icf_overrides_qa_json_b64 }}
-          ICF_OVERRIDES_PROD_JSON_B64: ${{ steps.prepare_icf.outputs.icf_overrides_prod_json_b64 }}
-          ICF_TEMPLATE_SOURCE: ${{ steps.prepare_icf.outputs.icf_template_source }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python3 .github/scripts/create_icf_issue.py
-
 
   promote_qa:
     needs: [export, archive_export]
@@ -460,14 +438,14 @@ jobs:
       - name: Preparar scripts de base de datos
         if: ${{ env.PROMOTE_QA_ENABLED == 'true' && needs.export.outputs.database_scripts != '' && needs.export.outputs.database_scripts != '[]' }}
         id: prepare_db_scripts
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-prepare-db-scripts@refactor
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-prepare-db-scripts@flow-b
         with:
           artifact-name: ${{ needs.export.outputs.artifact_name }}
 
       - name: Construir ICF efímero
         if: ${{ env.PROMOTE_QA_ENABLED == 'true' && needs.archive_export.outputs.icf_template_status == 'ready' }}
         id: build_icf
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@refactor
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@flow-b
         env:
           ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES_QA }}
         with:
@@ -496,7 +474,7 @@ jobs:
 
       - name: Promover paquete
         if: ${{ env.PROMOTE_QA_ENABLED == 'true' && needs.archive_export.outputs.icf_template_status == 'ready' }}
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@refactor
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@flow-b
         with:
           source_env: dev
           target_env: qa
@@ -509,7 +487,7 @@ jobs:
 
       - name: Promover paquete sin ICF
         if: ${{ env.PROMOTE_QA_ENABLED == 'true' && needs.archive_export.outputs.icf_template_status != 'ready' }}
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@refactor
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@flow-b
         with:
           source_env: dev
           target_env: qa
@@ -653,14 +631,14 @@ jobs:
       - name: Preparar scripts de base de datos
         if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' && needs.export.outputs.database_scripts != '' && needs.export.outputs.database_scripts != '[]' }}
         id: prepare_db_scripts
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-prepare-db-scripts@refactor
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-prepare-db-scripts@flow-b
         with:
           artifact-name: ${{ needs.export.outputs.artifact_name }}
 
       - name: Construir ICF efímero
         if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' && needs.archive_export.outputs.icf_template_status == 'ready' }}
         id: build_icf
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@refactor
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@flow-b
         env:
           ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES_PROD }}
         with:
@@ -689,7 +667,7 @@ jobs:
 
       - name: Promover paquete
         if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' && needs.archive_export.outputs.icf_template_status == 'ready' }}
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@refactor
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@flow-b
         with:
           source_env: dev
           target_env: prod
@@ -702,7 +680,7 @@ jobs:
 
       - name: Promover paquete sin ICF
         if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' && needs.archive_export.outputs.icf_template_status != 'ready' }}
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@refactor
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@flow-b
         with:
           source_env: dev
           target_env: prod
