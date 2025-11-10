@@ -1,0 +1,13 @@
+{
+  "artifact_path": "artifacts/app-c872981e-13d9-4d1f-8712-11b2fa93545b-CICD-FinalTest.zip",
+  "artifact_dir": "artifacts",
+  "deployment_uuid": "6084c0dc-c4aa-4fd6-8280-4ff4062be6a5",
+  "deployment_status": "COMPLETED",
+  "downloaded_files": [
+    "artifacts/app-c872981e-13d9-4d1f-8712-11b2fa93545b-CICD-FinalTest.zip"
+  ],
+  "database_scripts": [],
+  "plugins_zip": "",
+  "customization_file": "",
+  "customization_template": ""
+}
