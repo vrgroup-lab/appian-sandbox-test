@@ -184,13 +184,6 @@ jobs:
           echo "Contenido tras la descarga inicial:"
           ls -R "${{ steps.prep.outputs.dest }}" || true
 
-      - name: Descargar scripts de base de datos
-        if: ${{ needs.export.outputs.database_scripts != '' && needs.export.outputs.database_scripts != '[]' }}
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ format('{0}-db-scripts', needs.export.outputs.artifact_name) }}
-          path: ${{ steps.prep.outputs.dest }}/database-scripts
-
       - name: Descargar archivo de customización
         if: ${{ needs.export.outputs.customization_file != '' }}
         uses: actions/download-artifact@v4
@@ -435,7 +428,7 @@ jobs:
           echo "package_path=$pkg" >> "$GITHUB_OUTPUT"
 
       - name: Preparar scripts de base de datos
-        if: ${{ env.PROMOTE_QA_ENABLED == 'true' && needs.export.outputs.database_scripts != '' && needs.export.outputs.database_scripts != '[]' }}
+        if: ${{ env.PROMOTE_QA_ENABLED == 'true' }}
         id: prepare_db_scripts
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-prepare-db-scripts@main
         with:
@@ -628,7 +621,7 @@ jobs:
           echo "package_path=$pkg" >> "$GITHUB_OUTPUT"
 
       - name: Preparar scripts de base de datos
-        if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' && needs.export.outputs.database_scripts != '' && needs.export.outputs.database_scripts != '[]' }}
+        if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' }}
         id: prepare_db_scripts
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-prepare-db-scripts@main
         with:
