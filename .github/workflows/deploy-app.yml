@@ -406,7 +406,6 @@ jobs:
           echo "package_path=$pkg" >> "$GITHUB_OUTPUT"
 
       - name: Preparar scripts de base de datos
-        if: ${{ needs.export.outputs.database_scripts != '' && needs.export.outputs.database_scripts != '[]' }}
         id: prepare_db_scripts
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-prepare-db-scripts@flow-b
         with:
@@ -556,7 +555,7 @@ jobs:
           echo "package_path=$pkg" >> "$GITHUB_OUTPUT"
 
       - name: Preparar scripts de base de datos
-        if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' && needs.export.outputs.database_scripts != '' && needs.export.outputs.database_scripts != '[]' }}
+        if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' }}
         id: prepare_db_scripts
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-prepare-db-scripts@flow-b
         with:
@@ -716,7 +715,7 @@ jobs:
           echo "package_path=$pkg" >> "$GITHUB_OUTPUT"
 
       - name: Preparar scripts de base de datos
-        if: ${{ env.PROMOTE_QA_ONLY_ENABLED == 'true' && needs.export.outputs.database_scripts != '' && needs.export.outputs.database_scripts != '[]' }}
+        if: ${{ env.PROMOTE_QA_ONLY_ENABLED == 'true' }}
         id: prepare_db_scripts
         uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-prepare-db-scripts@flow-b
         with:
