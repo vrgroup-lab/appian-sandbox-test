@@ -143,8 +143,6 @@ jobs:
       icf_template_source: ${{ steps.prepare_icf.outputs.icf_template_source }}
       icf_template_status: ${{ steps.prepare_icf.outputs.icf_template_status }}
       icf_template_file: ${{ steps.prepare_icf.outputs.icf_template_file }}
-      icf_issue_number: ${{ steps.raise.outputs.issue_number }}
-      icf_issue_url: ${{ steps.raise.outputs.issue_url }}
       package_artifact_name: ${{ steps.locate_package.outputs.package_artifact_name }}
       package_file_name: ${{ steps.locate_package.outputs.package_file_name }}
       package_status: ${{ steps.locate_package.outputs.package_status }}
@@ -314,24 +312,6 @@ jobs:
           echo "deployment_uuid=${{ needs.export.outputs.deployment_uuid }}"
           echo "deployment_status=${{ needs.export.outputs.deployment_status }}"
 
-      - name: Crear issue con guía para ICF
-        id: raise
-        env:
-          PLAN: ${{ inputs.plan }}
-          ARTIFACT_DIR: ${{ steps.publish.outputs.artifact_dir }}
-          METADATA_PATH: ${{ steps.publish.outputs.metadata_path }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          TARGET_MAP: '{"dev-to-qa":["qa"],"dev-qa-prod":["qa","prod"],"qa-to-prod":["prod"]}'
-          TEMPLATE_PATH: .github/templates/icf-issue.md
-          PROVISIONING_TEMPLATE_PATH: provisioning/icf-template.properties
-          ICF_TEMPLATE_PATH: ${{ steps.prepare_icf.outputs.icf_template_path }}
-          ICF_TEMPLATE_CONTENT_B64: ${{ steps.prepare_icf.outputs.icf_template_content_b64 }}
-          ICF_OVERRIDES_JSON_B64: ${{ steps.prepare_icf.outputs.icf_overrides_json_b64 }}
-          ICF_OVERRIDES_QA_JSON_B64: ${{ steps.prepare_icf.outputs.icf_overrides_qa_json_b64 }}
-          ICF_OVERRIDES_PROD_JSON_B64: ${{ steps.prepare_icf.outputs.icf_overrides_prod_json_b64 }}
-          ICF_TEMPLATE_SOURCE: ${{ steps.prepare_icf.outputs.icf_template_source }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python3 .github/scripts/create_icf_issue.py
 
   promote_qa:
     if: ${{ inputs.plan != 'qa-to-prod' }}
