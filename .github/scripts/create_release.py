@@ -239,7 +239,7 @@ def build_release_payload() -> tuple[str, str, str, dict]:
     body_sections = [
         "## Comentarios",
         "_Describe aquí los cambios promovidos. Puedes editar esta sección._",
-        "\n> ⚠️ El contenido siguiente se genera automáticamente; no lo modifiques.",
+        "\n%%%%%%%%%%%% NO MODIFICAR A PARTIR DE AQUÍ %%%%%%%%%%%%",
         "\n## Resumen",
         "\n".join(summary_lines),
     ]
