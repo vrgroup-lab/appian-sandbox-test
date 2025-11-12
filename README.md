@@ -1,163 +1,107 @@
-# 📦 CI/CD Pipeline – Appian - GitHub Actions
+# Appian CI/CD Wrapper Template
 
-> Estado: este repo ahora actúa como Sandbox de una aplicación Appian y consume acciones del repo Core (`vrgroup-lab/appian-cicd-core@refactor`). El material del antiguo monorepo fue archivado en `legacy_monorepo/`.
+Repositorio plantilla para orquestar despliegues automatizados de aplicaciones **Appian** utilizando las acciones del **Appian CI/CD Core**.  
+Define la estructura mínima y las convenciones necesarias para que cada aplicación integre GitHub Actions con la plataforma Appian.
 
-## Uso rápido (wrappers hacia el Core)
-- Workflows: `deploy-app.yml` (aplicaciones) y `deploy-package.yml` (paquetes).
-- Ambos apuntan a `vrgroup-lab/appian-cicd-core/.github/actions/appian-{export,promote}@refactor` y requieren `vars.APP_UUID`.
-- Cada ejecución descarga el template de customización generado por Appian, lo procesa con `.github/scripts/prepare_icf_template.py` y abre una issue automática (`.github/templates/icf-issue.md`) con:
-  - Extracto del `.properties` real exportado.
-- JSON listo para pegar en los secretos `ICF_JSON_OVERRIDES_QA` y `ICF_JSON_OVERRIDES_PROD`.
-- Inputs disponibles:
-  - `plan` (`dev-to-qa`, `dev-qa-prod`, `qa-to-prod`).
-  - `package_name` (sólo en `deploy-package.yml`).
-
-> **Versión:** 2025-07-01 · *Owner: M. Tombolini (VR Group)*
+> ℹ️ El detalle completo de configuración y uso se documenta en el **Manual de Usuario** incluido en este repositorio (`Manual_de_Usuario_CICD_Appian__GitHub.pdf`). Este README resume los conceptos principales.
 
 ---
 
-## ✅ Propósito
+## 🧭 Propósito
 
-Orquestar **dos procesos de promoción** mediante GitHub Actions para mover artefactos entre entornos con trazabilidad y control:
-
-### 1. Pipeline de **Aplicaciones completas**
-Soporta las cuatro rutas de despliegue definidas:
-1. **Dev → QA** (validación funcional)  
-2. **Dev → QA → Prod** (flujo estándar)  
-3. **Dev → Prod** (fast-track de emergencia)  
-4. **QA → Prod** (hot-fix)  
-
-### 2. Pipeline de **Paquetes (features)**
-Optimizado para entrega continua de mejoras parciales:
-1. **Dev → QA**  
-2. **Dev → QA → Prod**  
-
-**Garantías comunes:**
-- Etapas **export → inspect → import** completamente automatizadas.  
-- Aprobaciones manuales gobernadas por **GitHub Environments**.  
-- Credenciales segregadas por entorno (URL + API Key).  
-- Artefacto inmutable: lo validado es lo que se importa.  
-
+El *wrapper* actúa como intermediario entre las aplicaciones Appian y el Core CI/CD.  
+Centraliza las configuraciones, credenciales y workflows necesarios para ejecutar despliegues controlados entre entornos (Dev → QA → Prod).
 
 ---
 
-## 🌍 Topología de entornos
+## ⚙️ Funcionalidad principal
 
-| GitHub Environment | URL de Appian                                                          | Estado                       |
-| ------------------ | ---------------------------------------------------------------------- | ---------------------------- |
-| `dev`              | [https://dev‑bicevida.appian.cloud](https://dev‑bicevida.appian.cloud) | ✅ Connected                  |
-| `qa`               | [https://qa‑bicevida.appian.cloud](https://qa‑bicevida.appian.cloud)   | ✅ Connected                  |
-| `prod`             | **simulado – apunta a QA**                                             | ⏳ A la espera de acceso real |
-
-> **Nota:** mientras Prod no esté disponible, los jobs con `environment: prod` se ejecutan contra QA. Esto mantiene la firma del pipeline intacta para el día en que Prod se habilite.
+- Orquestación de exportación, inspección y promoción de aplicaciones Appian.  
+- Integración directa con las acciones del Core (no se replica lógica).  
+- Control de credenciales, variables y overrides por entorno.  
+- Validaciones previas y gates manuales definidos mediante Environments.  
+- Trazabilidad y versionado de cada ejecución/artefacto.
 
 ---
 
-## ⚙️ Arquitectura general
+## 🧩 Estructura del repositorio
+
+- `.github/workflows/` — Workflows `deploy-app.yml` y `deploy-package.yml` (wrappers).  
+- `.github/scripts/` — utilidades complementarias (ej. `create_release.py`).  
+- `appian-artifacts/` — exportaciones y metadatos versionados automáticamente.  
+- `Manual_de_Usuario_CICD_Appian__GitHub.pdf` — guía oficial con el paso a paso.  
+- Otros directorios (`provisioning/`, etc.) pueden contener plantillas compartidas.
+
+---
+
+## 🔐 Configuración inicial
+
+Antes de ejecutar cualquier flujo, deben configurarse los siguientes elementos:
+
+### Secrets requeridos
+- `APPIAN_DEV_API_KEY`, `APPIAN_QA_API_KEY`, `APPIAN_PROD_API_KEY` — almacenados en los **GitHub Environments** correspondientes.  
+- `ICF_JSON_OVERRIDES_QA`, `ICF_JSON_OVERRIDES_PROD` — texto plano con overrides por entorno (Flujo B/C).  
+- `GITHUB_TOKEN` — provisto automáticamente por Actions (requerido por el Core).
+
+### Variables de repositorio
+- `APP_UUID` (obligatoria) — identificador de la aplicación en Appian.  
+- `APP_NAME` (opcional) — nombre legible para etiquetas y releases.
+
+---
+
+## 🚀 Flujos soportados
+
+Los workflows (`deploy-app.yml`, `deploy-package.yml`) permiten seleccionar el plan en el disparo manual (`workflow_dispatch`):
+
+| Flujo | Descripción | Acciones del Core |
+| --- | --- | --- |
+| **A – Base** | Export → promote directo (sin overrides ni scripts) | `appian-export`, `appian-promote` |
+| **B – Package + ICF** | Incluye `customization.properties` por entorno | `appian-export`, `appian-build-icf`, `appian-promote` |
+| **C – Extendido** | Export, inspección, scripts SQL y Dev→QA→Prod | `appian-export`, `appian-prepare-db-scripts`, `appian-promote` |
+
+> Cada ejecución publica los artefactos generados y actualiza el release correspondiente. Consulta el Manual de Usuario para pasos detallados, parámetros y políticas de aprobación.
+
+---
+
+## 📄 Formato del secreto (Flujo B/C – overrides)
+
+Los secretos deben contener texto plano con asignaciones en formato:
 
 ```
-┌────────────┐   export  ┌────────────┐   import   ┌──────────────┐
-│ Appian Dev │──────────►│     QA     │──────────► │ Prod*(QA URL)│
-└────────────┘           └────────────┘            └──────────────┘
-        ▲                       ▲                         ▲
-        │  secrets.dev          │  secrets.qa             │  secrets.prod
-        ▼                       ▼                         ▼
-      GitHub Actions ——— Workflows & Artifacts ——— Branch Protection
+connectedSystem.<UUID>.baseUrl=https://example
+connectedSystem.<UUID>.apiKeyValue=AAA
+content.<UUID>.VALUE=10
 ```
 
----
-
-## 🔐 Autenticación
-
-Actual: cada llamada REST incluye cabecera `Appian-API-Key` obtenida de `{{ secrets.[env].APPIAN_API_KEY }}`.
-
-### 🔄 Alternativas evaluadas
-
-| Opción                   | Descripción                                                                              | Pros                                             | Contras                                 |
-| ------------------------ | ---------------------------------------------------------------------------------------- | ------------------------------------------------ | --------------------------------------- |
-| **Directo (actual)**     | GitHub llama a `/deployments` con API Key por environment                                | Menos capas, fácil de auditar                    | API Key vive en GitHub; rotación manual |
+**Reglas:**
+- Una línea por asignación (`clave=valor`).  
+- Líneas vacías o comentadas con `#` se ignoran.  
+- Los valores sensibles no se imprimen en logs.  
 
 ---
 
-## 🌳 Branching Model (repositorio)
+## 🧠 Relación con el Core
 
-| Rama        | Rol                                                         | Reglas                           |
-| ----------- | ----------------------------------------------------------- | -------------------------------- |
-| `main`      | Línea estable; artefactos desplegados (o simulados) en Prod | **Protegida**: PR + 1 aprobación |
-| `dev`       | Desarrollo de workflows y experimentos                      | Libre                            |
-| `feature/*` | Cambios puntuales                                           | Merge ► `dev`                    |
+El wrapper **no contiene lógica de despliegue propia**: toda la ejecución es delegada al Core.  
+Su rol es definir los secretos, variables y workflows que invocan las acciones principales (`export`, `promote`, `build-icf`, etc.).  
 
-> No se protegen ramas secundarias; el control de despliegues recae en **GitHub Environments**.
+Cada aplicación Appian mantiene su propio wrapper, reutilizando el mismo Core compartido.
 
 ---
 
-## 📁 Estructura de artefactos
+## 📘 Manual de Usuario
 
-Cada export queda versionada en `appian-artifacts/<artifact_name>/` junto con todos los archivos complementarios que entrega el Core.
+Todo el detalle sobre configuración de repositorios, permisos, ejecución de pipelines y tratamiento de incidencias está documentado en:  
+[`Manual_de_Usuario_CICD_Appian__GitHub.pdf`](Manual_de_Usuario_CICD_Appian__GitHub.pdf)
 
-```
-appian-artifacts/
-  <artifact_name>/
-    export-metadata.json
-    <artifact_name>.zip
-    database-scripts/            # opcional: SQL/DDL empaquetados por el Core
-    customization/               # opcional: customization.properties exportado
-    customization-template/      # opcional: template properties
-    plugins/                     # opcional: bundle de plug-ins
-```
+Revisa siempre la versión incluida en este repositorio para garantizar que sigues las convenciones vigentes.
 
-- `export-metadata.json` conserva los paths originales (`artifact_path`, `artifact_dir`) y los metadatos que devuelve Appian (`deployment_uuid`, `deployment_status`, `downloaded_files`).
-- Los jobs posteriores consumen los mismos nombres de artifact (`<artifact_name>`, `<artifact_name>-db-scripts`, etc.) publicados desde el Core.
+## 📞 Contacto y soporte
 
----
+**Equipo CI/CD Appian – VR Group / Bice Vida**
 
-## 🛠️ Workflows disponibles
+- Consultor / Developer: Maximiliano Tombolini — mtombolini@vr-group.cl  
+- Lead Delivery Service: Ángel Barroyeta — abarroyeta@vrgroup.cl  
+- Arquitecto Appian: Ignacio Arriagada — iarriagada@vrgroup.cl  
 
-| Archivo                       | Tipo         | ¿Lo usa el usuario final? | Descripción breve                               |
-| ----------------------------- | ------------ | ------------------------- | ----------------------------------------------- |
-| `deploy_app_pipeline.yml`     | **Pipeline** | ✅ **Sí**                  | Dev → QA → Prod para **aplicaciones completas** |
-| `deploy_package_pipeline.yml` | **Pipeline** | ✅ **Sí**                  | Dev → QA → Prod para **paquetes**               |
-| `wf_export_app.yml`           | Job helper   | ❌                         | Exporta ZIP de app desde Dev                    |
-| `wf_export_package.yml`       | Job helper   | ❌                         | Exporta ZIP de paquete                          |
-| `wf_inspect.yml`              | Job helper   | ❌                         | Ejecuta `/deployments?action=inspect`           |
-| `wf_import.yml`               | Job helper   | ❌                         | Importa ZIP en QA o Prod                        |
-| `wf_list_packages.yml`        | Job helper   | ❌                         | Lista paquetes por app                          |
-
-> Los usuarios disparan los **pipelines**, no los helpers.
-
----
-
-## 🔗 Endpoints Appian
-
-| Método & Ruta                              | Uso actual               |
-| ------------------------------------------ | ------------------------ |
-| `GET /applications/{uuid}/packages`        | Obtener UUIDs            |
-| `POST /deployments` `Action-Type: export`  | Exportar paquete/app     |
-| `GET /deployments/{uuid}`                  | Ver estado export/import |
-| `POST /deployments` `Action-Type: inspect` | Validar zip en QA/Prod   |
-| `POST /deployments` `Action-Type: import`  | Importar zip             |
-
----
-
-## 📂 CI/CD Manager (Appian)
-
-- Persistencia temporal → `apps_config.json` en repo.
-- **Próximo sprint**: migración a **Data Fabric** + Record Actions.
-
----
-
-## 🛣️ Roadmap (Q3–Q4 2025)
-
-1. Migrar CI/CD Manager a Data Fabric y exponer Record Actions para una gestión robusta de aplicaciones y versiones.
-
-2. Extender los pipelines para incluir artefactos de configuración (Admin Console, SQL, plugins) junto al ZIP principal.
-
-3. Optimizar el flujo de aprobaciones en GitHub Environments, eliminando pasos redundantes y definiendo criterios claros de aceptación.
-
----
-
-## 📞 Contacto
-
-- **Consultor / Developer:** Maximiliano Tombolini – [mtombolini@vr-group.cl](mailto:mtombolini@vr-group.cl)
-- **Lead Delivery Service:** *Ángel Barroyeta* – [abarroyeta@vrgroup.cl](mailto:abarroyeta@vrgroup.cl)
-- **Arquitecto Appian:** *Ignacio Arriagada* – [iarriagada@vrgroup.cl](mailto:iarriagada@vrgroup.cl)
+Utiliza este canal para coordinar nuevas configuraciones, incidentes o mejoras del wrapper. Si necesitas más contexto operativo, consulta el Manual de Usuario antes de escalar.

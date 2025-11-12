@@ -57,7 +57,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: vrgroup-lab/appian-cicd-core
-          ref: refactor
+          ref: main
           path: core-actions
 
       - name: Preparar acciones core
@@ -68,7 +68,7 @@ jobs:
 
       - name: Ejecutar export Appian
         id: export
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-export@refactor
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-export@main
         env:
           APPIAN_DEV_API_KEY: ${{ secrets.APPIAN_DEV_API_KEY }}
           APPIAN_QA_API_KEY: ${{ secrets.APPIAN_QA_API_KEY }}
@@ -429,14 +429,14 @@ jobs:
       - name: Preparar scripts de base de datos
         if: ${{ needs.export.outputs.database_scripts != '' && needs.export.outputs.database_scripts != '[]' }}
         id: prepare_db_scripts
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-prepare-db-scripts@refactor
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-prepare-db-scripts@main
         with:
           artifact-name: ${{ needs.export.outputs.artifact_name }}
 
       - name: Construir ICF efímero
         if: ${{ needs.archive_export.outputs.icf_template_status == 'ready' }}
         id: build_icf
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@refactor
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@main
         env:
           ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES_QA }}
         with:
@@ -446,7 +446,7 @@ jobs:
 
       - name: Promover aplicación (con ICF)
         if: ${{ needs.archive_export.outputs.icf_template_status == 'ready' }}
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@refactor
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@main
         with:
           source_env: dev
           target_env: qa
@@ -459,7 +459,7 @@ jobs:
 
       - name: Promover aplicación (sin ICF)
         if: ${{ needs.archive_export.outputs.icf_template_status != 'ready' }}
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@refactor
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@main
         with:
           source_env: dev
           target_env: qa
@@ -579,14 +579,14 @@ jobs:
       - name: Preparar scripts de base de datos
         if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' && needs.export.outputs.database_scripts != '' && needs.export.outputs.database_scripts != '[]' }}
         id: prepare_db_scripts
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-prepare-db-scripts@refactor
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-prepare-db-scripts@main
         with:
           artifact-name: ${{ needs.export.outputs.artifact_name }}
 
       - name: Construir ICF efímero
         if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' && needs.archive_export.outputs.icf_template_status == 'ready' }}
         id: build_icf
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@refactor
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@main
         env:
           ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES_PROD }}
         with:
@@ -596,7 +596,7 @@ jobs:
 
       - name: Promover aplicación (con ICF)
         if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' && needs.archive_export.outputs.icf_template_status == 'ready' }}
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@refactor
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@main
         with:
           source_env: dev
           target_env: prod
@@ -609,7 +609,7 @@ jobs:
 
       - name: Promover aplicación (sin ICF)
         if: ${{ env.PROMOTE_QA_PROD_ENABLED == 'true' && needs.archive_export.outputs.icf_template_status != 'ready' }}
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@refactor
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@main
         with:
           source_env: dev
           target_env: prod
@@ -739,14 +739,14 @@ jobs:
       - name: Preparar scripts de base de datos
         if: ${{ env.PROMOTE_QA_ONLY_ENABLED == 'true' && needs.export.outputs.database_scripts != '' && needs.export.outputs.database_scripts != '[]' }}
         id: prepare_db_scripts
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-prepare-db-scripts@refactor
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-prepare-db-scripts@main
         with:
           artifact-name: ${{ needs.export.outputs.artifact_name }}
 
       - name: Construir ICF efímero
         if: ${{ env.PROMOTE_QA_ONLY_ENABLED == 'true' && needs.archive_export.outputs.icf_template_status == 'ready' }}
         id: build_icf
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@refactor
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-build-icf@main
         env:
           ICF_JSON_OVERRIDES: ${{ secrets.ICF_JSON_OVERRIDES_PROD }}
         with:
@@ -756,7 +756,7 @@ jobs:
 
       - name: Promover aplicación (con ICF)
         if: ${{ env.PROMOTE_QA_ONLY_ENABLED == 'true' && needs.archive_export.outputs.icf_template_status == 'ready' }}
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@refactor
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@main
         with:
           source_env: qa
           target_env: prod
@@ -769,7 +769,7 @@ jobs:
 
       - name: Promover aplicación (sin ICF)
         if: ${{ env.PROMOTE_QA_ONLY_ENABLED == 'true' && needs.archive_export.outputs.icf_template_status != 'ready' }}
-        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@refactor
+        uses: vrgroup-lab/appian-cicd-core/.github/actions/appian-promote@main
         with:
           source_env: qa
           target_env: prod
