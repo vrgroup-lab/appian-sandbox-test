@@ -1,4 +1,4 @@
-name: "Demo Core-Wrapper via GitHub App (composite)"
+name: Demo Core-Wrapper via GitHub App (composite)
 
 on:
   workflow_dispatch:
@@ -15,12 +15,12 @@ jobs:
       - name: Checkout wrapper
         uses: actions/checkout@v4
 
-      - name: Crear installation token desde GitHub App
+      - name: Crear token desde GitHub App
         id: app-token
         uses: actions/create-github-app-token@v1
         with:
           app-id: ${{ vars.GH_APP_CICD_ID }}
-          installation-id: ${{ vars.GH_APP_CICD_INSTALLATION_ID }}
+          private-key: ${{ secrets.GH_APP_CICD_PRIVATE_KEY }}   # <-- AQUÍ EL CAMBIO
           owner: "vrgroup-lab"
 
       - name: Llamar composite del core
