@@ -19,9 +19,9 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@v1
         with:
-          app-id: ${{ secrets.GH_APP_ID }}
-          installation-id: ${{ secrets.GH_APP_INSTALLATION_ID }}
-          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          app-id: ${{ vars.GH_APP_CICD_ID }}
+          installation-id: ${{ vars.GH_APP_CICD_INSTALLATION_ID }}
+          private-key: ${{ secrets.GH_APP_CICD_PRIVATE_KEY }}
 
       - name: Llamar composite del core
         uses: vrgroup-lab/appian-cicd-core/.github/actions/core-demo-bridge@main
